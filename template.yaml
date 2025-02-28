@@ -1,0 +1,45 @@
+# For documentation aobut AWS SAM, see e.g.
+#
+#   https://github.com/aws/serverless-application-model/tree/master/docs/
+#
+#   https://github.com/aws/serverless-application-model/blob/master/versions/2016-10-31.md
+#
+#   https://docs.aws.amazon.com/serverless-application-model/latest/developerguide/sam-specification-resources-and-properties.html
+#
+#   https://docs.aws.amazon.com/AWSCloudFormation/latest/APIReference/Welcome.html
+#
+#   https://github.com/cargo-lambda/cargo-lambda
+
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: Code for https://github.com/apps/auto-merge-dependabot-prs
+
+Resources:
+  AutoMergeDependabotPRsGitHubAppWebhook:
+    Type: AWS::Serverless::Function
+    Metadata:
+      BuildMethod: rust-cargolambda
+    Properties:
+      Timeout: 50
+      MemorySize: 128
+      Architectures:
+        - x86_64
+      Layers:
+        - arn:aws:lambda:eu-west-1:015030872274:layer:AWS-Parameters-and-Secrets-Lambda-Extension:17
+      Policies:
+        - AWSSecretsManagerGetSecretValuePolicy:
+            SecretArn: !Sub "arn:aws:secretsmanager:${AWS::Region}:${AWS::AccountId}:secret:*"
+      Environment:
+        Variables:
+          AUTO_MERGE_DEPENDABOT_PRS_DEPENDABOT_USER_NAME_AND_ID: dependabot[bot],49699333
+          AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_WEBHOOK_SECRET: webhook-secret
+          AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY: private-key
+      Runtime: provided.al2023
+      CodeUri: ./rust-webhook
+      Handler: bootstrap
+      Events:
+        GitHubWebhook:
+          Type: Api
+          Properties:
+            Path: /webhook
+            Method: post
