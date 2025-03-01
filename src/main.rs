@@ -33,7 +33,7 @@ async fn main() {
 async fn root() -> &'static str {
     "Hello, World!"
 }
-
+#[axum::debug_handler]
 async fn create_user(
     // this argument tells axum to parse the request body
     // as JSON into a `CreateUser` type
