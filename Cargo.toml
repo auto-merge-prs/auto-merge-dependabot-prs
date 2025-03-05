@@ -1,21 +1,9 @@
 [package]
-name = "auto-merge-dependabot-pull-requests"
+name = "auto-merge-dependabot-pull-requests-webhook"
 version = "0.1.0"
 edition = "2021"
 
 [dependencies]
-aws-config = "1.5.17"
-aws-sdk-secretsmanager = "1.64.0"
-tracing-subscriber = "0.3.19"
+lambda_http = "0.13.0"
 
-[dependencies.tokio]
-version = "1.43.0"
-features = ["macros", "rt-multi-thread"]
-
-[dependencies.axum]
-version = "0.8.1"
-features = ["macros"]
-
-[dependencies.serde]
-version = "1.0.218"
-features = ["derive"]
+tokio = { version = "1", features = ["macros"] }
