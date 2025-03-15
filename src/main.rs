@@ -77,7 +77,6 @@ mod tests {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    tracing::info!("NORDH 10");
     tracing::init_default_subscriber();
 
     eprintln!("NORDH 20");
