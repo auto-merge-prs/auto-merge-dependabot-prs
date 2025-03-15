@@ -1,0 +1,72 @@
+{
+    "action": "new_permissions_accepted",
+    "installation": {
+        "id": 62459623,
+        "client_id": "Iv23lipPLD7GzbL6Q1WF",
+        "account": {
+            "login": "cargo-public-api",
+            "id": 102732092,
+            "node_id": "O_kgDOBh-RPA",
+            "avatar_url": "https://avatars.githubusercontent.com/u/102732092?v=4",
+            "gravatar_id": "",
+            "url": "https://api.github.com/users/cargo-public-api",
+            "html_url": "https://github.com/cargo-public-api",
+            "followers_url": "https://api.github.com/users/cargo-public-api/followers",
+            "following_url": "https://api.github.com/users/cargo-public-api/following{/other_user}",
+            "gists_url": "https://api.github.com/users/cargo-public-api/gists{/gist_id}",
+            "starred_url": "https://api.github.com/users/cargo-public-api/starred{/owner}{/repo}",
+            "subscriptions_url": "https://api.github.com/users/cargo-public-api/subscriptions",
+            "organizations_url": "https://api.github.com/users/cargo-public-api/orgs",
+            "repos_url": "https://api.github.com/users/cargo-public-api/repos",
+            "events_url": "https://api.github.com/users/cargo-public-api/events{/privacy}",
+            "received_events_url": "https://api.github.com/users/cargo-public-api/received_events",
+            "type": "Organization",
+            "user_view_type": "public",
+            "site_admin": false
+        },
+        "repository_selection": "selected",
+        "access_tokens_url": "https://api.github.com/app/installations/62459623/access_tokens",
+        "repositories_url": "https://api.github.com/installation/repositories",
+        "html_url": "https://github.com/organizations/cargo-public-api/settings/installations/62459623",
+        "app_id": 1162951,
+        "app_slug": "auto-merge-dependabot-prs",
+        "target_id": 102732092,
+        "target_type": "Organization",
+        "permissions": {
+            "metadata": "read",
+            "pull_requests": "write"
+        },
+        "events": [
+            "pull_request",
+            "pull_request_review_comment"
+        ],
+        "created_at": "2025-03-11T17:33:40.000+01:00",
+        "updated_at": "2025-03-15T15:30:33.000+01:00",
+        "single_file_name": null,
+        "has_multiple_single_files": false,
+        "single_file_paths": [],
+        "suspended_by": null,
+        "suspended_at": null
+    },
+    "sender": {
+        "login": "cargo-public-api",
+        "id": 102732092,
+        "node_id": "O_kgDOBh-RPA",
+        "avatar_url": "https://avatars.githubusercontent.com/u/102732092?v=4",
+        "gravatar_id": "",
+        "url": "https://api.github.com/users/cargo-public-api",
+        "html_url": "https://github.com/cargo-public-api",
+        "followers_url": "https://api.github.com/users/cargo-public-api/followers",
+        "following_url": "https://api.github.com/users/cargo-public-api/following{/other_user}",
+        "gists_url": "https://api.github.com/users/cargo-public-api/gists{/gist_id}",
+        "starred_url": "https://api.github.com/users/cargo-public-api/starred{/owner}{/repo}",
+        "subscriptions_url": "https://api.github.com/users/cargo-public-api/subscriptions",
+        "organizations_url": "https://api.github.com/users/cargo-public-api/orgs",
+        "repos_url": "https://api.github.com/users/cargo-public-api/repos",
+        "events_url": "https://api.github.com/users/cargo-public-api/events{/privacy}",
+        "received_events_url": "https://api.github.com/users/cargo-public-api/received_events",
+        "type": "Organization",
+        "user_view_type": "public",
+        "site_admin": false
+    }
+}
