@@ -77,9 +77,9 @@ mod tests {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    panic!("NORDH 1");
+    tracing::info!("NORDH 10");
     tracing::init_default_subscriber();
 
-    eprintln!("NORDH 2");
+    eprintln!("NORDH 20");
     run(service_fn(function_handler)).await
 }
