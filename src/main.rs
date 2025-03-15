@@ -1,8 +1,9 @@
 use lambda_http::{run, service_fn, tracing, Error};
 mod http_handler;
 
+// https://od5ozeeh5gdawbtn.codetale.se/webhook
 
-use lambda_http::{Body, Error, Request, RequestExt, Response};
+use lambda_http::{Body, Request, RequestExt, Response};
 
 /// This is the main body for the function.
 /// Write your code inside it.
@@ -16,7 +17,7 @@ pub(crate) async fn function_handler(event: Request) -> Result<Response<Body>, E
         .unwrap_or("world");
     let message = format!("Hello {who}, this is an AWS Lambda HTTP request");
 
-    dbg!(event);
+    dbg!("NORDH", event);
 
     // Return something that implements IntoResponse.
     // It will be serialized to the right response event automatically by the runtime
