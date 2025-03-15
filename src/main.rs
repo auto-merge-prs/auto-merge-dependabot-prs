@@ -3,7 +3,7 @@ mod http_handler;
 
 // /home/martin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/lambda_runtime-0.13.0/src/deserializer.rs:const ERROR_CONTEXT: &str = "failed to deserialize the incoming data into the function's payload type";
 
-// https://od5ozeeh5gdawbtn.codetale.se/webhook
+// https://od5ozeeh5gdawbtn.nordholts.se/webhook
 
 use lambda_http::{Body, Request, RequestExt, Response};
 
