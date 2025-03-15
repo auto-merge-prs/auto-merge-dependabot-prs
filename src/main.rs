@@ -25,8 +25,8 @@ pub(crate) async fn function_handler(event: Request) -> Result<Response<Body>, E
     // It will be serialized to the right response event automatically by the runtime
     let resp = Response::builder()
         .status(200)
-        .header("content-type", "text/html")
-        .body("message.into()".into())
+        .header("content-type", "text/plain")
+        .body("ill get back to you nordh".into())
         .map_err(Box::new)?;
     Ok(resp)
 }
