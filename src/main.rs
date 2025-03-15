@@ -1,6 +1,8 @@
 use lambda_http::{run, service_fn, tracing, Error};
 mod http_handler;
 
+// /home/martin/.cargo/registry/src/index.crates.io-6f17d22bba15001f/lambda_runtime-0.13.0/src/deserializer.rs:const ERROR_CONTEXT: &str = "failed to deserialize the incoming data into the function's payload type";
+
 // https://od5ozeeh5gdawbtn.codetale.se/webhook
 
 use lambda_http::{Body, Request, RequestExt, Response};
@@ -75,7 +77,9 @@ mod tests {
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
+    panic!("NORDH 1");
     tracing::init_default_subscriber();
 
+    eprintln!("NORDH 2");
     run(service_fn(function_handler)).await
 }
