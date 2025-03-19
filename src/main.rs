@@ -8,6 +8,7 @@ use octocrab::models::webhook_events::{
 mod signature;
 
 async fn handle_pull_request_event(
+    sender: Sender,
     webhook_event: &WebhookEvent,
     pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
@@ -19,50 +20,53 @@ async fn handle_pull_request_event(
     ));
 }
 
-async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+async fn handle_webhook_event_with_secret(
+    request: Request,
+    secret: &str,
+) -> Result<String, ExecutionError> {
     let Body::Text(body) = request.body() else {
         return Err(ExecutionError::MalformedRequest(
             "request body is not text".into(),
         ));
     };
 
-    let Some(event) = request.headers().get("X-GitHub-Event").map(|h|h.to_str().unwrap()) else {
+    let Some(event) = request
+        .headers()
+        .get("X-GitHub-Event")
+        .map(|h| h.to_str().unwrap())
+    else {
         return Err(ExecutionError::MalformedRequest(
             "missing X-GitHub-Event header".into(),
         ));
     };
 
-    let Some(signature) = request.headers().get("X-Hub-Signature-256") else {
+    let Some(signature) = request
+        .headers()
+        .get("X-Hub-Signature-256")
+        .map(|h| h.to_str().unwrap())
+    else {
         return Err(ExecutionError::MalformedRequest(
             "missing X-Hub-Signature-256 header".into(),
         ));
     };
 
-    let verification = signature::verify(
-        signature.to_str().unwrap(),
-        "It's a Secret to Everybody",
-        body.as_bytes(),
-    );
-
+    let sender = match signature::verify(signature, secret, body.as_bytes()) {
+        signature::VerificationResult::Success => Sender::GitHub,
+        signature::VerificationResult::Failure => Sender::Unknown,
+    };
 
     let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
     return match &webhook_event.specific {
         WebhookEventPayload::PullRequest(pr) => {
-            handle_pull_request_event(&webhook_event, pr).await
+            handle_pull_request_event(sender, &webhook_event, pr).await
         }
         _ => Ok("not a pull request event".into()),
     };
-
-
-    let event = event.to_str().unwrap();
-    } else {
-        
-    }
 }
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let func = service_fn(handle_webhook_event);
+    let func = service_fn(handle_webhook_event_with_secret);
     lambda_http::run(func).await?;
     Ok(())
 }
@@ -85,6 +89,11 @@ impl From<ExecutionError> for Diagnostic {
     }
 }
 
+enum Sender {
+    GitHub,
+    Unknown,
+}
+
 #[cfg(test)]
 mod tests {
     use lambda_http::http::{self};
@@ -105,7 +114,7 @@ mod tests {
             .body(lambda_http::Body::Text(payload.into()))
             .unwrap();
 
-        let response = handle_webhook_event(request).await.unwrap();
+        let response = handle_webhook_event_with_secret(request).await.unwrap();
 
         println!("{:?}", response);
     }
