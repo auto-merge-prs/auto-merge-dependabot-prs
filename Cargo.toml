@@ -7,7 +7,6 @@ edition = "2021"
 hex = "0.4.3"
 lambda_runtime = "0.13.0"
 octocrab = "0.43.0"
-openssl = "0.10.71"
 serde_json = "1.0.140"
 thiserror = "2.0.12"
 tokio = { version = "1", features = ["macros"] }
@@ -15,4 +14,8 @@ tokio = { version = "1", features = ["macros"] }
 [dependencies.lambda_http]
 version = "0.13.0"
 features = ["pass_through"]
-# default-features = false
+
+[dependencies.openssl]
+version = "0.10.71"
+features = ["vendored"] # See https://github.com/sfackler/rust-openssl/issues/2217
+
