@@ -20,25 +20,31 @@ async fn handle_pull_request_event(
 }
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+    let Body::Text(body) = request.body() else {
+        return Err(ExecutionError::MalformedRequest(
+            "request body is not text".into(),
+        ));
+    };
+
     let Some(event) = request.headers().get("X-GitHub-Event") else {
         return Err(ExecutionError::MalformedRequest(
             "missing X-GitHub-Event header".into(),
         ));
     };
 
+
+    let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
+    return match &webhook_event.specific {
+        WebhookEventPayload::PullRequest(pr) => {
+            handle_pull_request_event(&webhook_event, pr).await
+        }
+        _ => Ok("not a pull request event".into()),
+    };
+
+
     let event = event.to_str().unwrap();
-    if let Body::Text(body) = request.body() {
-        let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
-        return match &webhook_event.specific {
-            WebhookEventPayload::PullRequest(pr) => {
-                handle_pull_request_event(&webhook_event, pr).await
-            }
-            _ => Ok("not a pull request event".into()),
-        };
     } else {
-        return Err(ExecutionError::MalformedRequest(
-            "missing request body".into(),
-        ));
+        
     }
 }
 
