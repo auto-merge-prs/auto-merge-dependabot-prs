@@ -1,7 +1,10 @@
 use lambda_http::{service_fn, Body, Error, Request};
 mod http_handler;
 use lambda_runtime::Diagnostic;
-use octocrab::models::{events::payload::PullRequestEventPayload, webhook_events::{WebhookEvent, WebhookEventPayload, WebhookEventType}};
+use octocrab::models::{
+    events::payload::PullRequestEventPayload,
+    webhook_events::{WebhookEvent, WebhookEventPayload, WebhookEventType},
+};
 use serde_json::json;
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
@@ -9,23 +12,21 @@ async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError
         let event = event.to_str().unwrap();
         if let Body::Text(body) = request.body() {
             let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
-            if let WebhookEventPayload::PullRequest(pull_request) = webhook_event.payload {
-                let pull_request = pull_request.into();
-                let pull_request = PullRequestEventPayload::from(pull_request);
-                let pull_request = json!(pull_request);
-                return Ok(pull_request.to_string());
-            }
-            match webhook_event.kind {
-                WebhookEventType::PullRequest => {
-                    return handle_pull_request_event();
-                }
-                _ => return Err(ExecutionError::MalformedRequest("unsupported event".into())),
+            let sender = webhook_event.sender.unwrap();
+            if let WebhookEventPayload::PullRequest(pr) = webhook_event.specific {
+                return Ok(format!("Pull request! action={:?} login={} id={}", pr.action, sender.login, sender.id));
+            } else {
+                return Ok("not a pull request event".into());
             }
         } else {
-            return Err(ExecutionError::MalformedRequest("missing request body".into()));
+            return Err(ExecutionError::MalformedRequest(
+                "missing request body".into(),
+            ));
         }
     } else {
-        return Err(ExecutionError::MalformedRequest("missing X-GitHub-Event".into()));
+        return Err(ExecutionError::MalformedRequest(
+            "missing X-GitHub-Event header".into(),
+        ));
     }
 }
 
@@ -38,8 +39,6 @@ async fn main() -> Result<(), Error> {
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
-    #[error("transient database error: {0}")]
-    DatabaseError(String),
     #[error("unexpected error: {0}")]
     MalformedRequest(String),
 }
@@ -47,8 +46,7 @@ pub enum ExecutionError {
 impl From<ExecutionError> for Diagnostic {
     fn from(value: ExecutionError) -> Diagnostic {
         let (error_type, error_message) = match value {
-            ExecutionError::DatabaseError(err) => ("Retryable", err.to_string()),
-            ExecutionError::MalformedRequest(err) => ("NonRetryable", err.to_string()),
+            ExecutionError::MalformedRequest(err) => ("MalformedRequest", err.to_string()),
         };
         Diagnostic {
             error_type: error_type.into(),
@@ -57,10 +55,9 @@ impl From<ExecutionError> for Diagnostic {
     }
 }
 
-
 #[cfg(test)]
 mod tests {
-    use lambda_http::http::{self, Request};
+    use lambda_http::http::{self};
 
     use super::*;
 
@@ -75,11 +72,11 @@ mod tests {
             .method(http::Method::POST)
             .uri("/webhook")
             .header("X-GitHub-Event", "pull_request")
-            .body(payload.to_string())
+            .body(lambda_http::Body::Text(payload.into()))
             .unwrap();
 
-        let response = handle_webhook_event(Request::new(lambda_http::Body::Text(payload.into())))
-            .await
-            .unwrap();
+        let response = handle_webhook_event(request).await.unwrap();
+
+        eprintln!("{:?}", response);
     }
 }
