@@ -8,6 +8,15 @@ use octocrab::models::{
 use serde_json::json;
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+    let mut signature_verified = false;
+    if let Some(signature) = request.headers().get("X-Hub-Signature-256") {
+        octocrab::webhooks::verify_signature(
+            request.body().as_bytes(),
+            signature.to_str().unwrap(),
+            "my-secret",
+        );
+        signature_verified = true;
+    }
     if let Some(event) = request.headers().get("X-GitHub-Event") {
         let event = event.to_str().unwrap();
         if let Body::Text(body) = request.body() {
