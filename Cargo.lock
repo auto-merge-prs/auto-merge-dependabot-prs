@@ -88,6 +88,7 @@ dependencies = [
  "lambda_runtime",
  "octocrab",
  "serde_json",
+ "thiserror",
  "tokio",
 ]
 
