@@ -1,25 +1,35 @@
 use lambda_http::{service_fn, Body, Error, Request};
 mod http_handler;
 use lambda_runtime::Diagnostic;
-use octocrab::models::{
-    events::payload::PullRequestEventPayload,
-    webhook_events::{WebhookEvent, WebhookEventPayload, WebhookEventType},
+use octocrab::models::webhook_events::{
+    payload::PullRequestWebhookEventPayload, WebhookEvent, WebhookEventPayload,
 };
-use serde_json::json;
 
 mod signature;
+
+async fn handle_pull_request_event(
+    webhook_event: WebhookEvent,
+    pr: PullRequestWebhookEventPayload,
+) -> Result<String, ExecutionError> {
+    let sender = webhook_event.sender.unwrap();
+
+    return Ok(format!(
+        "Pull request! action={:?} login={} id={}",
+        pr.action, sender.login, sender.id
+    ));
+}
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
     if let Some(event) = request.headers().get("X-GitHub-Event") {
         let event = event.to_str().unwrap();
         if let Body::Text(body) = request.body() {
             let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
-            let sender = webhook_event.sender.unwrap();
-            if let WebhookEventPayload::PullRequest(pr) = webhook_event.specific {
-                return Ok(format!("Pull request! action={:?} login={} id={}", pr.action, sender.login, sender.id));
-            } else {
-                return Ok("not a pull request event".into());
-            }
+            return match webhook_event.specific {
+                WebhookEventPayload::PullRequest(pr) => {
+                    handle_pull_request_event(webhook_event, pr).await
+                }
+                _ => Ok("not a pull request event".into()),
+            };
         } else {
             return Err(ExecutionError::MalformedRequest(
                 "missing request body".into(),
