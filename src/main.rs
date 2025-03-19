@@ -64,9 +64,14 @@ async fn handle_webhook_event_with_secret(
     };
 }
 
+async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+    let secret = "TODO";
+    handle_webhook_event_with_secret(request, secret).await
+}
+
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let func = service_fn(handle_webhook_event_with_secret);
+    let func = service_fn(handle_webhook_event);
     lambda_http::run(func).await?;
     Ok(())
 }
