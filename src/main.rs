@@ -8,10 +8,10 @@ use octocrab::models::webhook_events::{
 mod signature;
 
 async fn handle_pull_request_event(
-    webhook_event: WebhookEvent,
-    pr: PullRequestWebhookEventPayload,
+    webhook_event: &WebhookEvent,
+    pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
-    let sender = webhook_event.sender.unwrap();
+    let sender = webhook_event.sender.as_ref().unwrap();
 
     return Ok(format!(
         "Pull request! action={:?} login={} id={}",
@@ -29,9 +29,9 @@ async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError
     let event = event.to_str().unwrap();
     if let Body::Text(body) = request.body() {
         let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
-        return match webhook_event.specific {
+        return match &webhook_event.specific {
             WebhookEventPayload::PullRequest(pr) => {
-                handle_pull_request_event(webhook_event, pr).await
+                handle_pull_request_event(&webhook_event, pr).await
             }
             _ => Ok("not a pull request event".into()),
         };
