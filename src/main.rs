@@ -10,7 +10,6 @@ use serde_json::json;
 mod signature;
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
-    let mut signature_verified = false;
     if let Some(event) = request.headers().get("X-GitHub-Event") {
         let event = event.to_str().unwrap();
         if let Body::Text(body) = request.body() {
