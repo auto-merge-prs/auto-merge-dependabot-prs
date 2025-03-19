@@ -26,11 +26,23 @@ async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError
         ));
     };
 
-    let Some(event) = request.headers().get("X-GitHub-Event") else {
+    let Some(event) = request.headers().get("X-GitHub-Event").map(|h|h.to_str().unwrap()) else {
         return Err(ExecutionError::MalformedRequest(
             "missing X-GitHub-Event header".into(),
         ));
     };
+
+    let Some(signature) = request.headers().get("X-Hub-Signature-256") else {
+        return Err(ExecutionError::MalformedRequest(
+            "missing X-Hub-Signature-256 header".into(),
+        ));
+    };
+
+    let verification = signature::verify(
+        signature.to_str().unwrap(),
+        "It's a Secret to Everybody",
+        body.as_bytes(),
+    );
 
 
     let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
