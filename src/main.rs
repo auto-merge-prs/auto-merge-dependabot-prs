@@ -13,17 +13,22 @@ fn is_dependabot(author: &Author) -> bool {
 }
 
 async fn handle_pull_request_event(
-    _sender: Sender,
+    sender: Sender,
     webhook_event: &WebhookEvent,
-    pr: &PullRequestWebhookEventPayload,
+    _pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
-    let sender = webhook_event.sender.as_ref().unwrap();
+    let author = webhook_event.sender.as_ref().unwrap();
 
-    if is_dependabot(sender) {
-        return Ok("Auto-merge! Pull request opened by dependabot.".into());
+    Ok(if sender == Sender::GitHub {
+        if is_dependabot(author) {
+            "Auto-merge! Pull request opened by dependabot."
+        } else {
+            "NOT opened dependabot. No action."
+        }
     } else {
-        return Ok("NOT opened dependabot. No action.".into());
+        "NOT sent by GitHub. No action."
     }
+    .into())
 }
 
 async fn handle_webhook_event_with_secret(
@@ -100,6 +105,7 @@ impl From<ExecutionError> for Diagnostic {
     }
 }
 
+#[derive(PartialEq, Eq, Debug)]
 enum Sender {
     GitHub,
     Unknown,
@@ -125,7 +131,9 @@ mod tests {
             .body(lambda_http::Body::Text(payload.into()))
             .unwrap();
 
-        let response = handle_webhook_event_with_secret(request).await.unwrap();
+        let response = handle_webhook_event_with_secret(request, "not-secret-secret")
+            .await
+            .unwrap();
 
         println!("{:?}", response);
     }
