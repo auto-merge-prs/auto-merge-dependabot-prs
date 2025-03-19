@@ -77,6 +77,6 @@ mod tests {
 
         let response = handle_webhook_event(request).await.unwrap();
 
-        eprintln!("{:?}", response);
+        println!("{:?}", response);
     }
 }
