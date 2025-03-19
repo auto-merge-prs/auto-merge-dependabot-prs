@@ -33,10 +33,10 @@ pub(crate) async fn function_handler2(event: Request) -> Result<Response<Body>, 
 async fn main2() -> Result<(), Error> {
     tracing::init_default_subscriber();
 
-    run(service_fn(function_handler)).await
+    run(service_fn(function_handler2)).await
 }
 
-use lambda_runtime::{service_fn, LambdaEvent, Error};
+use lambda_runtime::LambdaEvent;
 use serde_json::{json, Value};
 
 #[tokio::main]
@@ -56,14 +56,14 @@ async fn func(event: LambdaEvent<Value>) -> Result<Value, Error> {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use std::collections::HashMap;
     use lambda_http::{Request, RequestExt};
+    use std::collections::HashMap;
 
     #[tokio::test]
     async fn test_generic_http_handler() {
         let request = Request::default();
 
-        let response = function_handler(request).await.unwrap();
+        let response = function_handler2(request).await.unwrap();
         assert_eq!(response.status(), 200);
 
         let body_bytes = response.body().to_vec();
@@ -78,12 +78,14 @@ mod tests {
     #[tokio::test]
     async fn test_http_handler_with_query_string() {
         let mut query_string_parameters: HashMap<String, String> = HashMap::new();
-        query_string_parameters.insert("name".into(), "auto-merge-dependabot-pull-requests-webhook".into());
+        query_string_parameters.insert(
+            "name".into(),
+            "auto-merge-dependabot-pull-requests-webhook".into(),
+        );
 
-        let request = Request::default()
-            .with_query_string_parameters(query_string_parameters);
+        let request = Request::default().with_query_string_parameters(query_string_parameters);
 
-        let response = function_handler(request).await.unwrap();
+        let response = function_handler2(request).await.unwrap();
         assert_eq!(response.status(), 200);
 
         let body_bytes = response.body().to_vec();
