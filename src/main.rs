@@ -47,7 +47,7 @@ async fn handle_webhook_event_with_secret(
         .map(|h| h.to_str().unwrap())
     else {
         return Err(ExecutionError::MalformedRequest(
-            "missing X-GitHub-Event header".into(),
+            format!("missing X-GitHub-Event header (got: {:?})", request.headers()),
         ));
     };
 
