@@ -1,8 +1,40 @@
 use lambda_http::{service_fn, Body, Error, Request};
 mod http_handler;
 use lambda_runtime::Diagnostic;
-use octocrab::models::{events::payload::PullRequestEventPayload, webhook_events::WebhookEvent};
+use octocrab::models::{events::payload::PullRequestEventPayload, webhook_events::{WebhookEvent, WebhookEventPayload, WebhookEventType}};
 use serde_json::json;
+
+async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+    if let Some(event) = request.headers().get("X-GitHub-Event") {
+        let event = event.to_str().unwrap();
+        if let Body::Text(body) = request.body() {
+            let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
+            if let WebhookEventPayload::PullRequest(pull_request) = webhook_event.payload {
+                let pull_request = pull_request.into();
+                let pull_request = PullRequestEventPayload::from(pull_request);
+                let pull_request = json!(pull_request);
+                return Ok(pull_request.to_string());
+            }
+            match webhook_event.kind {
+                WebhookEventType::PullRequest => {
+                    return handle_pull_request_event();
+                }
+                _ => return Err(ExecutionError::MalformedRequest("unsupported event".into())),
+            }
+        } else {
+            return Err(ExecutionError::MalformedRequest("missing request body".into()));
+        }
+    } else {
+        return Err(ExecutionError::MalformedRequest("missing X-GitHub-Event".into()));
+    }
+}
+
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    let func = service_fn(handle_webhook_event);
+    lambda_http::run(func).await?;
+    Ok(())
+}
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
@@ -25,52 +57,6 @@ impl From<ExecutionError> for Diagnostic {
     }
 }
 
-async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
-    if let Some(event) = request.headers().get("X-GitHub-Event") {
-        let event = event.to_str().unwrap();
-        if let Body::Text(body) = request.body() {
-            let payload = body.to_string();
-            let webhook_event = WebhookEvent::try_from_header_and_body(event, &payload);
-            match webhook_event {
-                Ok(WebhookEvent::PullRequest(pull_request_webhook_event_payload)) => {
-                    let pull_request = pull_request_webhook_event_payload.pull_request;
-                    let action = pull_request_webhook_event_payload.action;
-                    let changes = pull_request_webhook_event_payload.changes;
-                    let changes = match changes {
-                        Some(changes) => {
-                            let title = changes.title.map(|title| title.from);
-                            let body = changes.body.map(|body| body.from);
-                            Some(PullRequestEventChanges {
-                                title,
-                                body,
-                            })
-                        }
-                        None => None,
-                    };
-                    let pull_request = PullRequestEventPayload {
-                        action,
-                        number: pull_request.number,
-                        pull_request: pull_request.pull_request,
-                        changes,
-                    };
-                    return Ok(json!(pull_request).to_string());
-                }
-                _ => return Err(ExecutionError::MalformedRequest("unsupported event".into())),
-            }
-        }
-        let webhook_event = WebhookEvent::try_from_header_and_body(event, request.body())
-
-    } else {
-        return Err(ExecutionError::MalformedRequest("missing X-GitHub-Event".into()));
-    }
-}
-
-#[tokio::main]
-async fn main() -> Result<(), Error> {
-    let func = service_fn(handle_webhook_event);
-    lambda_http::run(func).await?;
-    Ok(())
-}
 
 #[cfg(test)]
 mod tests {
