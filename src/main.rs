@@ -114,6 +114,7 @@ enum Sender {
 #[cfg(test)]
 mod tests {
     use lambda_http::http::{self};
+    use openssl::sign;
 
     use super::*;
 
@@ -122,16 +123,24 @@ mod tests {
         let payload = include_str!(
             "../tests/webhook-request-examples/pull-request-opened-by-dependabot/payload.json"
         );
+        let secret = "not-secret-secret";
 
         // let headers = include_str!("../tests/webhook-request-examples/pull-request-opened-by-dependabot/headers.txt");
         let request = http::Request::builder()
             .method(http::Method::POST)
             .uri("/webhook")
             .header("X-GitHub-Event", "pull_request")
+            .header(
+                "X-Hub-Signature-256",
+                &format!(
+                    "sha256={}",
+                    hex::encode(&signature::calculate(secret, payload.as_bytes()))
+                ),
+            )
             .body(lambda_http::Body::Text(payload.into()))
             .unwrap();
 
-        let response = handle_webhook_event_with_secret(request, "not-secret-secret")
+        let response = handle_webhook_event_with_secret(request, secret)
             .await
             .unwrap();
 
