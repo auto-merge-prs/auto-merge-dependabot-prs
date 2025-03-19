@@ -1,23 +1,29 @@
 use lambda_http::{service_fn, Body, Error, Request};
 mod http_handler;
 use lambda_runtime::Diagnostic;
-use octocrab::models::webhook_events::{
-    payload::PullRequestWebhookEventPayload, WebhookEvent, WebhookEventPayload,
+use octocrab::models::{
+    webhook_events::{payload::PullRequestWebhookEventPayload, WebhookEvent, WebhookEventPayload},
+    Author, UserId,
 };
 
 mod signature;
 
+fn is_dependabot(author: &Author) -> bool {
+    author.login == "dependabot[bot]" && author.id == UserId(49699333)
+}
+
 async fn handle_pull_request_event(
-    sender: Sender,
+    _sender: Sender,
     webhook_event: &WebhookEvent,
     pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
     let sender = webhook_event.sender.as_ref().unwrap();
 
-    return Ok(format!(
-        "Pull request! action={:?} login={} id={}",
-        pr.action, sender.login, sender.id
-    ));
+    if is_dependabot(sender) {
+        return Ok("Auto-merge! Pull request opened by dependabot.".into());
+    } else {
+        return Ok("NOT opened dependabot. No action.".into());
+    }
 }
 
 async fn handle_webhook_event_with_secret(
