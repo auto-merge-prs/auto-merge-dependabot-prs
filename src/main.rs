@@ -20,14 +20,12 @@ async fn handle_pull_request_event(
 ) -> Result<String, ExecutionError> {
     let author = webhook_event.sender.as_ref().unwrap();
 
-    Ok(if sender == Sender::GitHub {
-        if is_dependabot(author) {
-            "Auto-merge! Pull request opened by dependabot."
-        } else {
-            "NOT opened dependabot. No action."
-        }
+    Ok(if sender == Sender::GitHub && is_dependabot(author) {
+        "Auto-merge! Pull request opened by dependabot."
+    } else if is_dependabot(author) {
+        "NOT from GitHub (but opened by dependabot). No action."
     } else {
-        "NOT sent by GitHub. No action."
+        "NOT sent by GitHub or not dependabot. No action."
     }
     .into())
 }
@@ -48,9 +46,10 @@ async fn handle_webhook_event_with_secret(
         .get("X-GitHub-Event")
         .map(|h| h.to_str().unwrap())
     else {
-        return Err(ExecutionError::MalformedRequest(
-            format!("missing X-GitHub-Event header (actual5: {:?})", request.headers()),
-        ));
+        return Err(ExecutionError::MalformedRequest(format!(
+            "missing X-GitHub-Event header (actual5: {:?})",
+            request.headers()
+        )));
     };
 
     let Some(signature) = request
@@ -77,9 +76,14 @@ async fn handle_webhook_event_with_secret(
     };
 }
 
-async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+async fn handle_webhook_event(request: Request) -> Result<Value, ExecutionError> {
     let secret = "TODO";
-    handle_webhook_event_with_secret(request, secret).await
+    let body = handle_webhook_event_with_secret(request, secret).await?;
+    Ok(json!({
+        "statusCode": 200,
+        "content-type": "text/plain",
+        "body": body
+    }))
 }
 
 #[tokio::main]
