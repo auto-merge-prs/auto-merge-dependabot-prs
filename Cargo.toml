@@ -13,7 +13,7 @@ tokio = { version = "1", features = ["macros"] }
 
 [dependencies.lambda_http]
 version = "0.13.0"
-features = ["pass_through"]
+# features = ["pass_through"]
 
 [dependencies.openssl]
 version = "0.10.71"
