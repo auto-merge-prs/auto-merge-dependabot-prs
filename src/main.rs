@@ -77,7 +77,8 @@ async fn handle_webhook_event_with_secret(
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
     let secret = "TODO";
-    handle_webhook_event_with_secret(request, secret).await
+    let result = handle_webhook_event_with_secret(request, secret).await?;
+    Ok(serde_json::json!({ "statusCode": 200, "body": result }).to_string())
 }
 
 #[tokio::main]
@@ -114,7 +115,6 @@ enum Sender {
 #[cfg(test)]
 mod tests {
     use lambda_http::http::{self};
-    use openssl::sign;
 
     use super::*;
 
