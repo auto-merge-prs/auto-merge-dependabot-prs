@@ -5,6 +5,7 @@ use octocrab::models::{
     webhook_events::{payload::PullRequestWebhookEventPayload, WebhookEvent, WebhookEventPayload},
     Author, UserId,
 };
+use serde_json::json;
 
 mod signature;
 
@@ -78,7 +79,11 @@ async fn handle_webhook_event_with_secret(
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
     let secret = "TODO";
-    handle_webhook_event_with_secret(request, secret).await
+    let body = handle_webhook_event_with_secret(request, secret).await?;
+    Ok(serde_json::json!({
+        "statusCode": 200,
+        "body": body
+    }).to_string())
 }
 
 #[tokio::main]
