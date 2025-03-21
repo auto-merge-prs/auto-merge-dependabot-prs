@@ -35,6 +35,7 @@ async fn handle_webhook_event_with_secret(
     request: Request,
     secret: &str,
 ) -> Result<String, ExecutionError> {
+    eprintln!("nordh request = {:?}", request);
     let Body::Text(body) = request.body() else {
         return Err(ExecutionError::MalformedRequest(
             "request body is not text".into(),
