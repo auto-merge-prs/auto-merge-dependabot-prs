@@ -76,14 +76,10 @@ async fn handle_webhook_event_with_secret(
     };
 }
 
-async fn handle_webhook_event(request: Request) -> Result<Value, ExecutionError> {
+async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
     let secret = "TODO";
     let body = handle_webhook_event_with_secret(request, secret).await?;
-    Ok(json!({
-        "statusCode": 200,
-        "content-type": "text/plain",
-        "body": body
-    }))
+    Ok(body)
 }
 
 #[tokio::main]
