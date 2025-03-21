@@ -1,4 +1,4 @@
-use lambda_http::{service_fn, Body, Error, Request};
+use lambda_http::{service_fn, tracing, Body, Error, Request};
 mod http_handler;
 use lambda_runtime::Diagnostic;
 use octocrab::models::{
@@ -83,9 +83,9 @@ async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
-    let func = service_fn(handle_webhook_event);
-    lambda_http::run(func).await?;
-    Ok(())
+    tracing::init_default_subscriber();
+
+    lambda_http::run(service_fn(handle_webhook_event)).await
 }
 
 #[derive(Debug, thiserror::Error)]
