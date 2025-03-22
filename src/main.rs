@@ -84,15 +84,11 @@ async fn get_secret_inner() -> reqwest::Result<Value> {
 }
 
 async fn get_webhook_secret() -> Option<String> {
-    Ok(resp.get("SecretString"))
+    let Ok(secret) = get_secret_inner().await else {
+        eprintln!("Failed to get secret");
+        return None;
+    };
 
-    let Ok(secret) = reqwest::get("http://localhost:2773/secretsmanager/get?secretId=auto-merge-dependabot-pull-requests-webhook-secret")
-        .await?
-        .json::<Value>()
-        .await else {
-            eprintln!("Failed to get secret");
-            return None;
-        }
     println!("{resp:#?}");
     Ok(())    
 
