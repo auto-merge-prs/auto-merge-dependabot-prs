@@ -85,18 +85,18 @@ async fn get_secret_inner() -> reqwest::Result<Value> {
 
 async fn get_webhook_secret() -> Option<String> {
     // headers = {"X-Aws-Parameters-Secrets-Token": os.environ.get('AWS_SESSION_TOKEN')}
-    let Ok(secret) = get_secret_inner().await else {
-        eprintln!("Failed to get secret");
+    let Ok(json) = get_secret_inner().await else {
+        eprintln!("Failed to get secret from AWS");
         return None;
     };
 
-    Ok(())    // "SecretString"
-
-
-    "TODO".into()
+    json.get("SecretString")
+        .and_then(|s| s.as_str())
+        .map(ToString::to_string)
 }
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+    eprintln!("Failed to get secret from JSON");
     let secret = "TODO";
     let body = handle_webhook_event_with_secret(request, secret).await?;
     Ok(body)
