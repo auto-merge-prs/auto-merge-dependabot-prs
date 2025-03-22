@@ -84,13 +84,13 @@ async fn get_secret_inner() -> reqwest::Result<Value> {
 }
 
 async fn get_webhook_secret() -> Option<String> {
+    // headers = {"X-Aws-Parameters-Secrets-Token": os.environ.get('AWS_SESSION_TOKEN')}
     let Ok(secret) = get_secret_inner().await else {
         eprintln!("Failed to get secret");
         return None;
     };
 
-    println!("{resp:#?}");
-    Ok(())    
+    Ok(())    // "SecretString"
 
 
     "TODO".into()
