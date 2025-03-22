@@ -96,7 +96,9 @@ async fn get_webhook_secret() -> Option<String> {
 }
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
-    eprintln!("Failed to get secret from JSON");
+    let Some(secret) = get_webhook_secret().await.unwrap_or_else(|| "TODO".to_owned()) else {
+        eprintln!("Failed to get secret from JSON");
+
     let secret = "TODO";
     let body = handle_webhook_event_with_secret(request, secret).await?;
     Ok(body)
