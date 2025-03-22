@@ -76,13 +76,22 @@ async fn handle_webhook_event_with_secret(
     };
 }
 
-async fn get_webhook_secret() -> reqwest::Result<String> {
+async fn get_secret_inner() -> reqwest::Result<Value> {
+    reqwest::get("http://localhost:2773/secretsmanager/get?secretId=auto-merge-dependabot-pull-requests-webhook-secret")
+        .await?
+        .json::<Value>()
+        .await
+}
+
+async fn get_webhook_secret() -> Option<String> {
+    Ok(resp.get("SecretString"))
+
     let Ok(secret) = reqwest::get("http://localhost:2773/secretsmanager/get?secretId=auto-merge-dependabot-pull-requests-webhook-secret")
         .await?
         .json::<Value>()
         .await else {
             eprintln!("Failed to get secret");
-            return Err(reqwest::Error::from(reqwest::StatusCode::INTERNAL_SERVER_ERROR));
+            return None;
         }
     println!("{resp:#?}");
     Ok(())    
