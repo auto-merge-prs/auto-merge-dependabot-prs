@@ -76,14 +76,20 @@ async fn handle_webhook_event_with_secret(
     };
 }
 
-async fn get_secret_inner() -> reqwest::Result<Value> {
-    reqwest::get("http://localhost:2773/secretsmanager/get?secretId=auto-merge-dependabot-pull-requests-webhook-secret")
-        .await?
-        .json::<Value>()
+// TODO: Name
+async fn get_secret_inner(aws_session_token: String) -> reqwest::Result<Value> {
+    let client = reqwest::Client::new();
+    client.get("http://localhost:2773/secretsmanager/get?secretId=auto-merge-dependabot-pull-requests-webhook-secret")
+        .header("X-Aws-Parameters-Secrets-Token", aws_session_token)
+        .send()
         .await
 }
 
-async fn get_webhook_secret() -> Option<String> {
+async fn get_webhook_secret(aws_session_token: String) -> Option<String> {
+    if let Ok(aws_session_token) = std::env::var("AWS_SESSION_TOKEN") {
+
+    }
+
     // headers = {"X-Aws-Parameters-Secrets-Token": os.environ.get('AWS_SESSION_TOKEN')}
     let Ok(json) = get_secret_inner().await else {
         eprintln!("Failed to get secret from AWS");
@@ -96,6 +102,7 @@ async fn get_webhook_secret() -> Option<String> {
 }
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+
     let Some(secret) = get_webhook_secret().await.unwrap_or_else(|| "TODO".to_owned()) else {
         eprintln!("Failed to get secret from JSON");
 
