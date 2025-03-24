@@ -87,11 +87,11 @@ async fn get_secret_inner(aws_session_token: String) -> reqwest::Result<Value> {
 
 async fn get_webhook_secret(aws_session_token: String) -> Option<String> {
     if let Ok(aws_session_token) = std::env::var("AWS_SESSION_TOKEN") {
-
+        eprintln!("AWS_SESSION_TOKEN not set");
+        return None;
     }
 
-    // headers = {"X-Aws-Parameters-Secrets-Token": os.environ.get('AWS_SESSION_TOKEN')}
-    let Ok(json) = get_secret_inner().await else {
+    let Ok(json) = get_secret_inner(aws_session_token).await else {
         eprintln!("Failed to get secret from AWS");
         return None;
     };
