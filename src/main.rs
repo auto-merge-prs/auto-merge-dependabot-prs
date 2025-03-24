@@ -5,7 +5,7 @@ use octocrab::models::{
     webhook_events::{payload::PullRequestWebhookEventPayload, WebhookEvent, WebhookEventPayload},
     Author, UserId,
 };
-use serde_json::{json, Value};
+use serde_json::Value;
 
 mod signature;
 
@@ -82,14 +82,16 @@ async fn get_secret_inner(aws_session_token: String) -> reqwest::Result<Value> {
     client.get("http://localhost:2773/secretsmanager/get?secretId=auto-merge-dependabot-pull-requests-webhook-secret")
         .header("X-Aws-Parameters-Secrets-Token", aws_session_token)
         .send()
+        .await?
+        .json::<Value>()
         .await
 }
 
 async fn get_webhook_secret() -> Option<String> {
-    if let Ok(aws_session_token) = std::env::var("AWS_SESSION_TOKEN") {
+    let Ok(aws_session_token) = std::env::var("AWS_SESSION_TOKEN") else {
         eprintln!("AWS_SESSION_TOKEN not set");
         return None;
-    }
+    };
 
     let Ok(json) = get_secret_inner(aws_session_token).await else {
         eprintln!("Failed to get secret from AWS");
