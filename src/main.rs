@@ -85,7 +85,7 @@ async fn get_secret_inner(aws_session_token: String) -> reqwest::Result<Value> {
         .await
 }
 
-async fn get_webhook_secret(aws_session_token: String) -> Option<String> {
+async fn get_webhook_secret() -> Option<String> {
     if let Ok(aws_session_token) = std::env::var("AWS_SESSION_TOKEN") {
         eprintln!("AWS_SESSION_TOKEN not set");
         return None;
@@ -102,12 +102,14 @@ async fn get_webhook_secret(aws_session_token: String) -> Option<String> {
 }
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
-
-    let Some(secret) = get_webhook_secret().await.unwrap_or_else(|| "TODO".to_owned()) else {
-        eprintln!("Failed to get secret from JSON");
-
-    let secret = "TODO";
-    let body = handle_webhook_event_with_secret(request, secret).await?;
+    let secret = match get_webhook_secret().await {
+        Some(secret) => secret,
+        None => {
+            eprintln!("Failed to get secret from JSON. Using dummy secret.");
+            "dummy-secret".to_owned()
+        }
+    };
+    let body = handle_webhook_event_with_secret(request, &secret).await?;
     Ok(body)
 }
 
