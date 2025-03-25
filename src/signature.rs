@@ -13,11 +13,7 @@ pub fn calculate(secret: &str, payload: &[u8]) -> Vec<u8> {
     signer.sign_to_vec().unwrap()
 }
 
-pub fn verify(
-    signature_header_value: &str,
-    secret: &str,
-    payload: &[u8],
-) -> VerificationResult {
+pub fn verify(signature_header_value: &str, secret: &str, payload: &[u8]) -> VerificationResult {
     let actual_signature = calculate(secret, payload);
     let expected_signature = hex::decode(&signature_header_value["sha256=".len()..]).unwrap();
 
