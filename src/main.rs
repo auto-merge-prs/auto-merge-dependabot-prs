@@ -9,18 +9,33 @@ use serde_json::Value;
 
 mod signature;
 
-fn is_dependabot(author: &Author) -> bool {
-    author.login == "dependabot[bot]" && author.id == UserId(49699333)
+#[tokio::main]
+async fn main() -> Result<(), Error> {
+    tracing::init_default_subscriber();
+
+    lambda_http::run(service_fn(handle_webhook_event)).await
+}
+
+async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+    let (event, body) = event_and_body(&request).await?;
+    let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
+    match &webhook_event.specific {
+        WebhookEventPayload::PullRequest(pr) => {
+            handle_pull_request_event(request, &webhook_event, pr).await
+        }
+        _ => Ok("not a pull request event".into()),
+    }
 }
 
 async fn handle_pull_request_event(
-    sender: Sender,
+    request: Request,
     webhook_event: &WebhookEvent,
     _pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
     let author = webhook_event.sender.as_ref().unwrap();
 
-    Ok(if sender == Sender::GitHub && is_dependabot(author) {
+    Ok(if is_dependabot(author) {
+        // sender == Sender::GitHub &&
         "Auto-merge! Pull request opened by dependabot."
     } else if is_dependabot(author) {
         "NOT from GitHub (but opened by dependabot). No action."
@@ -30,11 +45,14 @@ async fn handle_pull_request_event(
     .into())
 }
 
+fn is_dependabot(author: &Author) -> bool {
+    author.login == "dependabot[bot]" && author.id == UserId(49699333)
+}
+
 async fn handle_webhook_event_with_secret(
     request: Request,
     secret: &str,
 ) -> Result<String, ExecutionError> {
-    eprintln!("nordh request = {:?}", request);
     let Body::Text(body) = request.body() else {
         return Err(ExecutionError::MalformedRequest(
             "request body is not text".into(),
@@ -79,9 +97,12 @@ async fn handle_webhook_event_with_secret(
 async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::Result<Value> {
     // static AWS_SESSION_TOKEN: std::sync::LazyLock<>
     // auto-merge-dependabot-pull-requests-private-key-1
-    // 
+    //
     let client = reqwest::Client::new();
-    client.get(format!("http://localhost:2773/secretsmanager/get?secretId={secret_id}"))
+    client
+        .get(format!(
+            "http://localhost:2773/secretsmanager/get?secretId={secret_id}"
+        ))
         .header("X-Aws-Parameters-Secrets-Token", aws_session_token)
         .send()
         .await?
@@ -95,7 +116,12 @@ async fn get_webhook_secret() -> Option<String> {
         return None;
     };
 
-    let Ok(json) = request_secret(aws_session_token, "auto-merge-dependabot-pull-requests-webhook-secret").await else {
+    let Ok(json) = request_secret(
+        aws_session_token,
+        "auto-merge-dependabot-pull-requests-webhook-secret",
+    )
+    .await
+    else {
         eprintln!("Failed to get secret from AWS");
         return None;
     };
@@ -105,7 +131,11 @@ async fn get_webhook_secret() -> Option<String> {
         .map(ToString::to_string)
 }
 
-async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+/*
+
+    let body = handle_webhook_event_with_secret(request, &secret).await?;
+    Ok(body)
+
     let secret = match get_webhook_secret().await {
         Some(secret) => secret,
         None => {
@@ -113,16 +143,8 @@ async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError
             "dummy-secret".to_owned()
         }
     };
-    let body = handle_webhook_event_with_secret(request, &secret).await?;
-    Ok(body)
-}
 
-#[tokio::main]
-async fn main() -> Result<(), Error> {
-    tracing::init_default_subscriber();
-
-    lambda_http::run(service_fn(handle_webhook_event)).await
-}
+*/
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
@@ -146,6 +168,26 @@ impl From<ExecutionError> for Diagnostic {
 enum Sender {
     GitHub,
     Unknown,
+}
+
+async fn event_and_body(request: &Request) -> Result<(&str, &String), ExecutionError> {
+    let Some(event) = request
+        .headers()
+        .get("X-GitHub-Event")
+        .map(|h| h.to_str().unwrap())
+    else {
+        return Err(ExecutionError::MalformedRequest(
+            "missing X-GitHub-Event header".into(),
+        ));
+    };
+
+    let Body::Text(body) = request.body() else {
+        return Err(ExecutionError::MalformedRequest(
+            "request body is not text".into(),
+        ));
+    };
+
+    Ok((event, body))
 }
 
 #[cfg(test)]
