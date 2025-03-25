@@ -21,28 +21,30 @@ async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError
     let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
     match &webhook_event.specific {
         WebhookEventPayload::PullRequest(pr) => {
-            handle_pull_request_event(request, &webhook_event, pr).await
+            handle_pull_request_event(&request, body, &webhook_event, pr).await
         }
         _ => Ok("not a pull request event".into()),
     }
 }
 
 async fn handle_pull_request_event(
-    request: Request,
+    request: &Request,
+    body: &String,
     webhook_event: &WebhookEvent,
-    _pr: &PullRequestWebhookEventPayload,
+    pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
     let author = webhook_event.sender.as_ref().unwrap();
 
     Ok(if is_dependabot(author) {
-        handle_pull_request_event_from_dependabot(request, webhook_event, pr).await?
+        handle_pull_request_event_from_dependabot(request, body, webhook_event, pr).await?
     } else {
         "NOT PR from dependabot. No action.".into()
     })
 }
 
 async fn handle_pull_request_event_from_dependabot(
-    request: Request,
+    request: &Request,
+    body: &String,
     webhook_event: &WebhookEvent,
     _pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
@@ -56,7 +58,13 @@ async fn handle_pull_request_event_from_dependabot(
         ));
     };
 
-    let sender = match signature::verify(signature, secret, body.as_bytes()) {
+    let Some(secret) = get_webhook_secret().await else {
+        return Err(ExecutionError::MalformedRequest(
+            "failed to get webhook secret".into(),
+        ));
+    };
+
+    let sender = match signature::verify(signature, &secret, body.as_bytes()) {
         signature::VerificationResult::Success => Sender::GitHub,
         signature::VerificationResult::Failure => Sender::Unknown,
     };
@@ -65,7 +73,7 @@ async fn handle_pull_request_event_from_dependabot(
         Ok("signature verified".into())
     } else {
         Err(ExecutionError::MalformedRequest(
-            "signature verification failed".into(),
+            "invalid dependabot signature".into(),
         ))
     }
 }
