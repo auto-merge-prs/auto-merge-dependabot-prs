@@ -76,10 +76,12 @@ async fn handle_webhook_event_with_secret(
     };
 }
 
-// TODO: Name
-async fn get_secret_inner(aws_session_token: String) -> reqwest::Result<Value> {
+async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::Result<Value> {
+    // static AWS_SESSION_TOKEN: std::sync::LazyLock<>
+    // auto-merge-dependabot-pull-requests-private-key-1
+    // 
     let client = reqwest::Client::new();
-    client.get("http://localhost:2773/secretsmanager/get?secretId=auto-merge-dependabot-pull-requests-webhook-secret")
+    client.get(format!("http://localhost:2773/secretsmanager/get?secretId={secret_id}"))
         .header("X-Aws-Parameters-Secrets-Token", aws_session_token)
         .send()
         .await?
@@ -93,7 +95,7 @@ async fn get_webhook_secret() -> Option<String> {
         return None;
     };
 
-    let Ok(json) = get_secret_inner(aws_session_token).await else {
+    let Ok(json) = request_secret(aws_session_token, "auto-merge-dependabot-pull-requests-webhook-secret").await else {
         eprintln!("Failed to get secret from AWS");
         return None;
     };
