@@ -36,7 +36,7 @@ async fn handle_pull_request_event(
     let author = webhook_event.sender.as_ref().unwrap();
 
     Ok(if is_dependabot(author) {
-        handle_pull_request_event_from_dependabot(request, body, webhook_event, pr).await?
+        handle_pull_request_event_from_dependabot(request, body, pr).await?
     } else {
         "NOT PR from dependabot. No action.".into()
     })
@@ -45,7 +45,6 @@ async fn handle_pull_request_event(
 async fn handle_pull_request_event_from_dependabot(
     request: &Request,
     body: &String,
-    webhook_event: &WebhookEvent,
     _pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
     let Some(signature) = request
@@ -80,25 +79,6 @@ async fn handle_pull_request_event_from_dependabot(
 
 fn is_dependabot(author: &Author) -> bool {
     author.login == "dependabot[bot]" && author.id == UserId(49699333)
-}
-
-async fn handle_webhook_event_with_secret(
-    request: Request,
-    secret: &str,
-) -> Result<String, ExecutionError> {
-    let Body::Text(body) = request.body() else {
-        return Err(ExecutionError::MalformedRequest(
-            "request body is not text".into(),
-        ));
-    };
-
-    let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
-    return match &webhook_event.specific {
-        WebhookEventPayload::PullRequest(pr) => {
-            handle_pull_request_event(sender, &webhook_event, pr).await
-        }
-        _ => Ok("not a pull request event".into()),
-    };
 }
 
 async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::Result<Value> {
@@ -197,6 +177,7 @@ async fn event_and_body(request: &Request) -> Result<(&str, &String), ExecutionE
     Ok((event, body))
 }
 
+/*
 #[cfg(test)]
 mod tests {
     use lambda_http::http::{self};
@@ -232,3 +213,4 @@ mod tests {
         println!("{:?}", response);
     }
 }
+ */
