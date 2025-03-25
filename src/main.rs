@@ -35,14 +35,39 @@ async fn handle_pull_request_event(
     let author = webhook_event.sender.as_ref().unwrap();
 
     Ok(if is_dependabot(author) {
-        // sender == Sender::GitHub &&
-        "Auto-merge! Pull request opened by dependabot."
-    } else if is_dependabot(author) {
-        "NOT from GitHub (but opened by dependabot). No action."
+        handle_pull_request_event_from_dependabot(request, webhook_event, pr).await?
     } else {
-        "NOT sent by GitHub or not dependabot. No action."
+        "NOT PR from dependabot. No action.".into()
+    })
+}
+
+async fn handle_pull_request_event_from_dependabot(
+    request: Request,
+    webhook_event: &WebhookEvent,
+    _pr: &PullRequestWebhookEventPayload,
+) -> Result<String, ExecutionError> {
+    let Some(signature) = request
+        .headers()
+        .get("X-Hub-Signature-256")
+        .map(|h| h.to_str().unwrap())
+    else {
+        return Err(ExecutionError::MalformedRequest(
+            "missing X-Hub-Signature-256 header".into(),
+        ));
+    };
+
+    let sender = match signature::verify(signature, secret, body.as_bytes()) {
+        signature::VerificationResult::Success => Sender::GitHub,
+        signature::VerificationResult::Failure => Sender::Unknown,
+    };
+
+    if sender == Sender::GitHub {
+        Ok("signature verified".into())
+    } else {
+        Err(ExecutionError::MalformedRequest(
+            "signature verification failed".into(),
+        ))
     }
-    .into())
 }
 
 fn is_dependabot(author: &Author) -> bool {
@@ -57,32 +82,6 @@ async fn handle_webhook_event_with_secret(
         return Err(ExecutionError::MalformedRequest(
             "request body is not text".into(),
         ));
-    };
-
-    let Some(event) = request
-        .headers()
-        .get("X-GitHub-Event")
-        .map(|h| h.to_str().unwrap())
-    else {
-        return Err(ExecutionError::MalformedRequest(format!(
-            "missing X-GitHub-Event header (actual5: {:?})",
-            request.headers()
-        )));
-    };
-
-    let Some(signature) = request
-        .headers()
-        .get("X-Hub-Signature-256")
-        .map(|h| h.to_str().unwrap())
-    else {
-        return Err(ExecutionError::MalformedRequest(
-            "missing X-Hub-Signature-256 header".into(),
-        ));
-    };
-
-    let sender = match signature::verify(signature, secret, body.as_bytes()) {
-        signature::VerificationResult::Success => Sender::GitHub,
-        signature::VerificationResult::Failure => Sender::Unknown,
     };
 
     let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
