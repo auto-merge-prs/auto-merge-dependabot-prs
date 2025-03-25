@@ -21,11 +21,11 @@ pub fn verify(
     let actual_signature = calculate(secret, payload);
     let expected_signature = hex::decode(&signature_header_value["sha256=".len()..]).unwrap();
 
-    return if memcmp::eq(&actual_signature, &expected_signature) {
+    if memcmp::eq(&actual_signature, &expected_signature) {
         VerificationResult::Success
     } else {
         VerificationResult::Failure
-    };
+    }
 }
 
 #[cfg(test)]

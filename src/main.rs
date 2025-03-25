@@ -86,7 +86,7 @@ async fn handle_pull_request_opened_by_dependabot(
                 "failed to get webhook secret".into(),
             ));
         };
-        let key = jsonwebtoken::EncodingKey::from_ed_pem(private_key.as_bytes()).unwrap();
+        let key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
 
         let octocrab = Octocrab::builder().app(app_id.into(), key).build().unwrap();
         match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "Dry-run (no action taken): If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
@@ -161,7 +161,7 @@ impl From<ExecutionError> for Diagnostic {
         };
         Diagnostic {
             error_type: error_type.into(),
-            error_message: error_message.into(),
+            error_message,
         }
     }
 }
