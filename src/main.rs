@@ -1,9 +1,16 @@
 use lambda_http::{service_fn, tracing, Body, Error, Request};
 mod http_handler;
 use lambda_runtime::Diagnostic;
-use octocrab::models::{
-    webhook_events::{payload::PullRequestWebhookEventPayload, WebhookEvent, WebhookEventPayload},
-    Author, UserId,
+use octocrab::{
+    models::{
+        pulls::PullRequestAction,
+        webhook_events::{
+            payload::{PullRequestWebhookEventAction, PullRequestWebhookEventPayload},
+            WebhookEvent, WebhookEventPayload,
+        },
+        Author, UserId,
+    },
+    Octocrab,
 };
 use serde_json::Value;
 
@@ -35,14 +42,16 @@ async fn handle_pull_request_event(
 ) -> Result<String, ExecutionError> {
     let author = webhook_event.sender.as_ref().unwrap();
 
-    Ok(if is_dependabot(author) {
-        handle_pull_request_event_from_dependabot(request, body, pr).await?
-    } else {
-        "NOT PR from dependabot. No action.".into()
-    })
+    Ok(
+        if is_dependabot(author) && pr.action == PullRequestWebhookEventAction::Opened {
+            handle_pull_request_opened_by_dependabot(request, body, pr).await?
+        } else {
+            "NOT PR opened by dependabot. No action.".into()
+        },
+    )
 }
 
-async fn handle_pull_request_event_from_dependabot(
+async fn handle_pull_request_opened_by_dependabot(
     request: &Request,
     body: &String,
     _pr: &PullRequestWebhookEventPayload,
@@ -57,7 +66,8 @@ async fn handle_pull_request_event_from_dependabot(
         ));
     };
 
-    let Some(secret) = get_webhook_secret().await else {
+    let Some(secret) = get_secret("auto-merge-dependabot-pull-requests-webhook-secret").await
+    else {
         return Err(ExecutionError::MalformedRequest(
             "failed to get webhook secret".into(),
         ));
@@ -69,6 +79,23 @@ async fn handle_pull_request_event_from_dependabot(
     };
 
     if sender == Sender::GitHub {
+        let app_id = 1162951; // https://github.com/settings/apps/auto-merge-dependabot-prs
+        let Some(private_key) =
+            get_secret("auto-merge-dependabot-pull-requests-private-key-1").await
+        else {
+            return Err(ExecutionError::MalformedRequest(
+                "failed to get webhook secret".into(),
+            ));
+        };
+        let key = jsonwebtoken::EncodingKey::from_ed_pem(private_key.as_bytes()).unwrap();
+
+        let octocrab = Octocrab::builder().app(app_id.into(), key).build().unwrap();
+        octocrab
+            .pulls()
+            .merge("octocrab", "octocrab", 1)
+            .await
+            .unwrap();
+
         Ok("signature verified".into())
     } else {
         Err(ExecutionError::MalformedRequest(
@@ -83,7 +110,7 @@ fn is_dependabot(author: &Author) -> bool {
 
 async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::Result<Value> {
     // static AWS_SESSION_TOKEN: std::sync::LazyLock<>
-    // auto-merge-dependabot-pull-requests-private-key-1
+    //
     //
     let client = reqwest::Client::new();
     client
@@ -97,18 +124,13 @@ async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::
         .await
 }
 
-async fn get_webhook_secret() -> Option<String> {
+async fn get_secret(secret_id: &str) -> Option<String> {
     let Ok(aws_session_token) = std::env::var("AWS_SESSION_TOKEN") else {
         eprintln!("AWS_SESSION_TOKEN not set");
         return None;
     };
 
-    let Ok(json) = request_secret(
-        aws_session_token,
-        "auto-merge-dependabot-pull-requests-webhook-secret",
-    )
-    .await
-    else {
+    let Ok(json) = request_secret(aws_session_token, secret_id).await else {
         eprintln!("Failed to get secret from AWS");
         return None;
     };

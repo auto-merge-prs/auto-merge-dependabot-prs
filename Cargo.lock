@@ -91,6 +91,7 @@ name = "auto-merge-dependabot-pull-requests-webhook"
 version = "0.1.0"
 dependencies = [
  "hex",
+ "jsonwebtoken",
  "lambda_http",
  "lambda_runtime",
  "octocrab",
