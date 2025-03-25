@@ -3,7 +3,6 @@ mod http_handler;
 use lambda_runtime::Diagnostic;
 use octocrab::{
     models::{
-        pulls::PullRequestAction,
         webhook_events::{
             payload::{PullRequestWebhookEventAction, PullRequestWebhookEventPayload},
             WebhookEvent, WebhookEventPayload,
@@ -54,7 +53,7 @@ async fn handle_pull_request_event(
 async fn handle_pull_request_opened_by_dependabot(
     request: &Request,
     body: &String,
-    _pr: &PullRequestWebhookEventPayload,
+    pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
     let Some(signature) = request
         .headers()
@@ -90,13 +89,10 @@ async fn handle_pull_request_opened_by_dependabot(
         let key = jsonwebtoken::EncodingKey::from_ed_pem(private_key.as_bytes()).unwrap();
 
         let octocrab = Octocrab::builder().app(app_id.into(), key).build().unwrap();
-        octocrab
-            .pulls()
-            .merge("octocrab", "octocrab", 1)
-            .await
-            .unwrap();
-
-        Ok("signature verified".into())
+        match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "Dry-run (no action taken): If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
+            Ok(_) => Ok("created dry-run comment".into()),
+            Err(e) => Ok(format!("Failed to create dry-run comment {:?}", e)),
+        }
     } else {
         Err(ExecutionError::MalformedRequest(
             "invalid dependabot signature".into(),
@@ -109,9 +105,6 @@ fn is_dependabot(author: &Author) -> bool {
 }
 
 async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::Result<Value> {
-    // static AWS_SESSION_TOKEN: std::sync::LazyLock<>
-    //
-    //
     let client = reqwest::Client::new();
     client
         .get(format!(
