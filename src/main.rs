@@ -115,11 +115,7 @@ impl Context {
             .build()
             .unwrap()
             .installation(self.installation_id())
-            .map_err(|e| {
-                ExecutionError::MalformedRequest(format!(
-                    "could not get installation instance: {e}"
-                ))
-            })
+            .map_err(|e| ExecutionError::ConfigurationError("could not get installation instance"))
     }
 
     fn installation_id(&self) -> InstallationId {
@@ -170,7 +166,7 @@ fn get_required_env_var(env_var_name: &'static str) -> Result<String, ExecutionE
     std::env::var(env_var_name).map_err(|_| ExecutionError::EnvVarNotSet(env_var_name))
 }
 
-async fn get_secret(secret_id_env_var_name: &str) -> Result<String, ExecutionError> {
+async fn get_secret(secret_id_env_var_name: &'static str) -> Result<String, ExecutionError> {
     let aws_session_token = get_required_env_var("AWS_SESSION_TOKEN")?;
     let secret_id = get_required_env_var(secret_id_env_var_name)?;
 
@@ -189,6 +185,8 @@ pub enum ExecutionError {
     /// Reduce risk of secrets leaking by only allowing static strings
     #[error("malformed request: {0}")]
     MalformedRequest(&'static str),
+    #[error("malformed request: {0}")]
+    ConfigurationError(&'static str),
     #[error("missing env var: {0}")]
     EnvVarNotSet(&'static str),
     #[error("missing secret with id: {0}")]
@@ -200,6 +198,8 @@ impl From<ExecutionError> for Diagnostic {
         let (error_type, error_message) = match value {
             ExecutionError::MalformedRequest(err) => ("MalformedRequest", err.to_string()),
             ExecutionError::EnvVarNotSet(err) => ("EnvVarNotSet", err.to_string()),
+            ExecutionError::MissingSecretId(err) => ("MissingSecretId", err.to_string()),
+            ExecutionError::ConfigurationError(err) => ("ConfigurationError", err.to_string()),
         };
         Diagnostic {
             error_type: error_type.into(),
