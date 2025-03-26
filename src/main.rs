@@ -28,18 +28,22 @@ struct Context {
     request: Request,
     webhook_event: WebhookEvent,
     conf: Configuration,
+    expected_signature: String,
 }
 
 impl Context {
     async fn new(request: Request) -> Result<Self, ExecutionError> {
-        let (event, body) = event_and_body(&request).await?;
-        let webhook_event = WebhookEvent::try_from_header_and_body(event, body)
+        let (github_event, expected_signature, body) =
+            request_into_event_and_signature_and_body(request)
+                .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
+        let webhook_event = WebhookEvent::try_from_header_and_body(&github_event, &body)
             .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
 
         Ok(Self {
             request,
             webhook_event,
             conf: Configuration::from_env(),
+            expected_signature,
         })
     }
 
@@ -205,7 +209,7 @@ async fn event_and_body(request: &Request) -> Result<(&str, &String), ExecutionE
     Ok((event, body))
 }
 
-async fn request_into_event_and_signature_and_body(
+fn request_into_event_and_signature_and_body(
     request: Request,
 ) -> Result<(String, String, Body), ExecutionError> {
     let signature = request
