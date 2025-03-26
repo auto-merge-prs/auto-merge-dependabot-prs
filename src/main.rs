@@ -22,7 +22,7 @@ async fn main() -> Result<(), Error> {
     lambda_http::run(service_fn(handle_webhook_event)).await
 }
 
-async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+async fn handle_webhook_event(request: Request) -> Result<&'static str, ExecutionError> {
     let context = Context::new(request).await?;
     context.handle_webhook_event().await
 }
@@ -37,8 +37,9 @@ impl Context {
     async fn new(request: Request) -> Result<Self, ExecutionError> {
         let (github_event, expected_signature, body) =
             request_into_event_and_signature_and_body(request)?;
+
         let webhook_event = WebhookEvent::try_from_header_and_body(&github_event, &body)
-            .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
+            .map_err(|_| ExecutionError::MalformedRequest("not a webhook event"))?;
 
         Ok(Self {
             body,
@@ -47,7 +48,7 @@ impl Context {
         })
     }
 
-    async fn handle_webhook_event(&self) -> Result<String, ExecutionError> {
+    async fn handle_webhook_event(&self) -> Result<&'static str, ExecutionError> {
         match &self.webhook_event.specific {
             WebhookEventPayload::PullRequest(pr) => self.handle_pull_request_event(pr).await,
             _ => Ok("not a pull request event".into()),
@@ -57,7 +58,7 @@ impl Context {
     async fn handle_pull_request_event(
         &self,
         pr: &PullRequestWebhookEventPayload,
-    ) -> Result<String, ExecutionError> {
+    ) -> Result<&'static str, ExecutionError> {
         let author = self
             .webhook_event
             .sender
@@ -76,7 +77,7 @@ impl Context {
     async fn handle_pull_request_opened_by_dependabot(
         &self,
         pr: &PullRequestWebhookEventPayload,
-    ) -> Result<String, ExecutionError> {
+    ) -> Result<&'static str, ExecutionError> {
         let sender = self.sender().await?;
         if sender == Sender::GitHub {
             self.enable_auto_merge(pr).await
@@ -90,7 +91,7 @@ impl Context {
     async fn enable_auto_merge(
         &self,
         pr: &PullRequestWebhookEventPayload,
-    ) -> Result<String, ExecutionError> {
+    ) -> Result<&'static str, ExecutionError> {
         let octocrab = self.github_app_installation_instance().await?;
         let repo = pr.pull_request.repo.as_ref().unwrap();
         let owner = &repo.owner.as_ref().unwrap().login;
@@ -165,9 +166,8 @@ async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::
         .await
 }
 
-fn get_required_env_var(env_var_name: &str) -> Result<String, ExecutionError> {
-    std::env::var(env_var_name)
-        .map_err(|_| ExecutionError::ConfigurationError(format!("env var not set: {env_var_name}")))
+fn get_required_env_var(env_var_name: &'static str) -> Result<String, ExecutionError> {
+    std::env::var(env_var_name).map_err(|_| ExecutionError::EnvVarNotSet(env_var_name))
 }
 
 async fn get_secret(secret_id_env_var_name: &str) -> Result<String, ExecutionError> {
@@ -176,31 +176,30 @@ async fn get_secret(secret_id_env_var_name: &str) -> Result<String, ExecutionErr
 
     let json = request_secret(aws_session_token, &secret_id)
         .await
-        .map_err(|_| {
-            ExecutionError::MalformedRequest(format!("Failed to get secret id {secret_id} "))
-        })?;
+        .map_err(|_| ExecutionError::MissingSecretId(secret_id))?;
 
     json.get("SecretString")
         .and_then(|s| s.as_str())
         .map(ToString::to_string)
-        .ok_or(ExecutionError::MalformedRequest(
-            "No SecretString in JSON".to_string(),
-        ))
+        .ok_or(ExecutionError::MalformedRequest("No SecretString in JSON"))
 }
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
+    /// Reduce risk of secrets leaking by only allowing static strings
     #[error("malformed request: {0}")]
-    MalformedRequest(String),
-    #[error("conbfiguration error: {0}")]
-    ConfigurationError(String),
+    MalformedRequest(&'static str),
+    #[error("missing env var: {0}")]
+    EnvVarNotSet(&'static str),
+    #[error("missing secret with id: {0}")]
+    MissingSecretId(String),
 }
 
 impl From<ExecutionError> for Diagnostic {
     fn from(value: ExecutionError) -> Diagnostic {
         let (error_type, error_message) = match value {
             ExecutionError::MalformedRequest(err) => ("MalformedRequest", err.to_string()),
-            ExecutionError::ConfigurationError(err) => ("ConfigurationError", err.to_string()),
+            ExecutionError::EnvVarNotSet(err) => ("EnvVarNotSet", err.to_string()),
         };
         Diagnostic {
             error_type: error_type.into(),
