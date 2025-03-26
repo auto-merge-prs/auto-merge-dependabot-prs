@@ -184,21 +184,6 @@ async fn get_secret(secret_id_env_var_name: &str) -> Result<String, ExecutionErr
         )))
 }
 
-/*
-
-    let body = handle_webhook_event_with_secret(request, &secret).await?;
-    Ok(body)
-
-    let secret = match get_webhook_secret().await {
-        Some(secret) => secret,
-        None => {
-            eprintln!("Failed to get secret from JSON. Using dummy secret.");
-            "dummy-secret".to_owned()
-        }
-    };
-
-*/
-
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
     #[error("unexpected error: {0}")]
@@ -223,16 +208,6 @@ enum Sender {
     Unknown,
 }
 
-async fn event_and_body(request: &Request) -> Result<(&str, &String), ExecutionError> {
-    let Body::Text(body) = request.body() else {
-        return Err(ExecutionError::MalformedRequest(
-            "request body is not text".into(),
-        ));
-    };
-
-    Ok((event, body))
-}
-
 fn request_into_event_and_signature_and_body(
     request: Request,
 ) -> Result<(String, String, Body), ExecutionError> {
@@ -252,55 +227,9 @@ fn request_into_event_and_signature_and_body(
             "missing X-GitHub-Event header".into(),
         ))?;
 
-    /*
-       let secret = get_secret("auto-merge-dependabot-pull-requests-webhook-secret")
-           .await
-           .ok_or(ExecutionError::MalformedRequest(
-               "failed to get webhook secret".into(),
-           ))?;
-    */
-
     Ok((
         event.to_string(),
         signature.to_string(),
         request.into_body(),
     ))
 }
-
-/*
-#[cfg(test)]
-mod tests {
-    use lambda_http::http::{self};
-
-    use super::*;
-
-    #[tokio::test]
-    async fn test_pull_request_opened_by_dependabot() {
-        let payload = include_str!(
-            "../tests/webhook-request-examples/pull-request-opened-by-dependabot/payload.json"
-        );
-        let secret = "not-secret-secret";
-
-        // let headers = include_str!("../tests/webhook-request-examples/pull-request-opened-by-dependabot/headers.txt");
-        let request = http::Request::builder()
-            .method(http::Method::POST)
-            .uri("/webhook")
-            .header("X-GitHub-Event", "pull_request")
-            .header(
-                "X-Hub-Signature-256",
-                &format!(
-                    "sha256={}",
-                    hex::encode(&signature::calculate(secret, payload.as_bytes()))
-                ),
-            )
-            .body(lambda_http::Body::Text(payload.into()))
-            .unwrap();
-
-        let response = handle_webhook_event_with_secret(request, secret)
-            .await
-            .unwrap();
-
-        println!("{:?}", response);
-    }
-}
- */
