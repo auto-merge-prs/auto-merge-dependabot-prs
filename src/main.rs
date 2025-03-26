@@ -82,17 +82,9 @@ impl Context {
         &self,
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<String, ExecutionError> {
-        let webhook_secret = get_secret(request).await?;
-        let sender = match signature::verify(&self.expected_signature, &secret, self.body.as_ref())
-        {
-            signature::VerificationResult::Success => Sender::GitHub,
-            signature::VerificationResult::Failure => Sender::Unknown,
-        };
-        // AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY
-        // AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_WEBHOOK_SECRET
-        if sender == Sender::GitHub {
+        if self.sender() == Sender::GitHub {
             let Some(private_key) =
-                get_secret("auto-merge-dependabot-pull-requests-private-key-1").await
+                get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY").await
             else {
                 return Err(ExecutionError::MalformedRequest(
                     "failed to get webhook secret".into(),
@@ -121,6 +113,19 @@ impl Context {
             Err(ExecutionError::MalformedRequest(
                 "invalid dependabot signature".into(),
             ))
+        }
+    }
+
+    async fn sender(&self) -> Result<Sender, ExecutionError> {
+        let webhook_secret =
+            get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_WEBHOOK_SECRET").await?;
+        let sender = match signature::verify(
+            &self.expected_signature,
+            &webhook_secret,
+            self.body.as_ref(),
+        ) {
+            signature::VerificationResult::Success => Sender::GitHub,
+            signature::VerificationResult::Failure => Sender::Unknown,
         }
     }
 }
