@@ -1,3 +1,4 @@
+use configuration::Configuration;
 use lambda_http::{service_fn, tracing, Body, Error, Request};
 mod http_handler;
 use lambda_runtime::Diagnostic;
@@ -13,9 +14,8 @@ use octocrab::{
 };
 use serde_json::Value;
 
-mod signature;
 mod configuration;
-
+mod signature;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -24,12 +24,31 @@ async fn main() -> Result<(), Error> {
     lambda_http::run(service_fn(handle_webhook_event)).await
 }
 
+struct Context {
+    request: Request,
+    webhook_event: WebhookEvent,
+    conf: Configuration,
+}
+
+impl Context {
+    async fn new(request: Request) -> Result<Self, ExecutionError> {
+        let (event, body) = event_and_body(&request).await?;
+        let webhook_event = WebhookEvent::try_from_header_and_body(event, body)
+            .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
+
+        Ok(Self {
+            request,
+            webhook_event,
+            conf: Configuration::from_env(),
+        })
+    }
+
+    async fn handle_webhook_event(&self) {}
+}
+
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
-    let conf = configuration::Configuration::from_env();
-    let (event, body) = event_and_body(&request).await?;
-    let webhook_event = WebhookEvent::try_from_header_and_body(event, body)
-        .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
-    match &webhook_event.specific {
+    let context = Context::new(request).await?;
+    match &context.webhook_event.specific {
         WebhookEventPayload::PullRequest(pr) => {
             handle_pull_request_event(&request, body, &webhook_event, pr).await
         }
@@ -177,16 +196,6 @@ enum Sender {
 }
 
 async fn event_and_body(request: &Request) -> Result<(&str, &String), ExecutionError> {
-    let Some(event) = request
-        .headers()
-        .get("X-GitHub-Event")
-        .map(|h| h.to_str().unwrap())
-    else {
-        return Err(ExecutionError::MalformedRequest(
-            "missing X-GitHub-Event header".into(),
-        ));
-    };
-
     let Body::Text(body) = request.body() else {
         return Err(ExecutionError::MalformedRequest(
             "request body is not text".into(),
@@ -196,22 +205,38 @@ async fn event_and_body(request: &Request) -> Result<(&str, &String), ExecutionE
     Ok((event, body))
 }
 
-async fn get_signature_and_secret(request: &Request) -> Result<(&str, String), ExecutionError> {
+async fn request_into_event_and_signature_and_body(
+    request: Request,
+) -> Result<(String, String, Body), ExecutionError> {
     let signature = request
         .headers()
         .get("X-Hub-Signature-256")
-        .map(|h| h.to_str().unwrap())
+        .map(|v| v.to_str().unwrap())
         .ok_or(ExecutionError::MalformedRequest(
             "missing X-Hub-Signature-256 header".into(),
         ))?;
 
-    let secret = get_secret("auto-merge-dependabot-pull-requests-webhook-secret")
-        .await
+    let event = request
+        .headers()
+        .get("X-GitHub-Event")
+        .map(|v| v.to_str().unwrap())
         .ok_or(ExecutionError::MalformedRequest(
-            "failed to get webhook secret".into(),
+            "missing X-GitHub-Event header".into(),
         ))?;
 
-    Ok((signature, secret))
+    /*
+       let secret = get_secret("auto-merge-dependabot-pull-requests-webhook-secret")
+           .await
+           .ok_or(ExecutionError::MalformedRequest(
+               "failed to get webhook secret".into(),
+           ))?;
+    */
+
+    Ok((
+        event.to_string(),
+        signature.to_string(),
+        request.into_body(),
+    ))
 }
 
 /*
