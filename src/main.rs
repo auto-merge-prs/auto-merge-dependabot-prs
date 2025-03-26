@@ -84,17 +84,10 @@ impl Context {
     ) -> Result<String, ExecutionError> {
         let sender = self.sender().await?;
         if sender == Sender::GitHub {
-            let Some(private_key) =
-                get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY").await
-            else {
-                return Err(ExecutionError::MalformedRequest(
-                    "failed to get webhook secret".into(),
-                ));
-            };
-            let key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
-
+            let private_key = get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY").await?;
+            let jwt_key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
             let octocrab = Octocrab::builder()
-                .app(self.conf.app_id, key)
+                .app(self.conf.app_id, jwt_key)
                 .build()
                 .unwrap()
                 .installation(match webhook_event.installation.as_ref().unwrap() {
