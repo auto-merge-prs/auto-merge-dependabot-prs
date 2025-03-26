@@ -82,7 +82,8 @@ impl Context {
         &self,
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<String, ExecutionError> {
-        if self.sender() == Sender::GitHub {
+        let sender = self.sender().await?;
+        if sender == Sender::GitHub {
             let Some(private_key) =
                 get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY").await
             else {
@@ -119,14 +120,16 @@ impl Context {
     async fn sender(&self) -> Result<Sender, ExecutionError> {
         let webhook_secret =
             get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_WEBHOOK_SECRET").await?;
-        let sender = match signature::verify(
-            &self.expected_signature,
-            &webhook_secret,
-            self.body.as_ref(),
-        ) {
-            signature::VerificationResult::Success => Sender::GitHub,
-            signature::VerificationResult::Failure => Sender::Unknown,
-        }
+        Ok(
+            match signature::verify(
+                &self.expected_signature,
+                &webhook_secret,
+                self.body.as_ref(),
+            ) {
+                signature::VerificationResult::Success => Sender::GitHub,
+                signature::VerificationResult::Failure => Sender::Unknown,
+            },
+        )
     }
 }
 
