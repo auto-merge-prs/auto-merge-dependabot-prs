@@ -98,7 +98,7 @@ impl Context {
         println!("NORDH pr: {:?}", pr);
         let repo = "cargo-public-api"; // TODO: pr.pull_request.repo.as_ref().unwrap();
         let owner = "cargo-public-api"; // TODO: &repo.owner.as_ref().unwrap().login;
-        let comment = "(dry-run test) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
+        let comment = "(dry-run test 2) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
         match octocrab
             .issues(owner, repo)
             .create_comment(pr.number, comment)
