@@ -179,9 +179,9 @@ async fn get_secret(secret_id_env_var_name: &str) -> Result<String, ExecutionErr
     json.get("SecretString")
         .and_then(|s| s.as_str())
         .map(ToString::to_string)
-        .ok_or(ExecutionError::MalformedRequest(format!(
-            "No SecretString in JSON"
-        )))
+        .ok_or(ExecutionError::MalformedRequest(
+            "No SecretString in JSON".to_string(),
+        ))
 }
 
 #[derive(Debug, thiserror::Error)]
