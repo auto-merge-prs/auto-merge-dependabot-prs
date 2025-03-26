@@ -99,9 +99,14 @@ impl Context {
         let octocrab = self.github_app_installation_instance().await?;
         let repo = pr.pull_request.repo.as_ref().unwrap();
         let owner = &repo.owner.as_ref().unwrap().login;
-        match octocrab.issues(owner, &repo.name).create_comment(pr.number, "(just a dry-run test) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀").await {
+        let comment = "(just a dry-run test) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
+        match octocrab
+            .issues(owner, &repo.name)
+            .create_comment(pr.number, comment)
+            .await
+        {
             Ok(_) => Ok("created dry-run comment".into()),
-            Err(_) => Ok(format!("Failed to create dry-run comment")),
+            Err(_) => Ok("Failed to create dry-run comment".into()),
         }
     }
 
