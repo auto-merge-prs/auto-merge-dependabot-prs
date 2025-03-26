@@ -24,6 +24,11 @@ async fn main() -> Result<(), Error> {
     lambda_http::run(service_fn(handle_webhook_event)).await
 }
 
+async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+    let context = Context::new(request).await?;
+    context.handle_webhook_event().await
+}
+
 struct Context {
     body: Body,
     webhook_event: WebhookEvent,
@@ -58,30 +63,20 @@ impl Context {
         &self,
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<String, ExecutionError> {
+        let author = self
+            .webhook_event
+            .sender
+            .as_ref()
+            .ok_or(ExecutionError::MalformedRequest("missing sender".into()))?;
+
+        Ok(
+            if is_dependabot(author) && pr.action == PullRequestWebhookEventAction::Opened {
+                handle_pull_request_opened_by_dependabot(request, body, webhook_event, pr).await?
+            } else {
+                "PR not by dependabot or action not 'opened'".into()
+            },
+        )
     }
-}
-
-async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
-    let context = Context::new(request).await?;
-}
-
-async fn handle_pull_request_event(
-    request: &Request,
-    body: &String,
-    webhook_event: &WebhookEvent,
-) -> Result<String, ExecutionError> {
-    let author = webhook_event
-        .sender
-        .as_ref()
-        .ok_or(ExecutionError::MalformedRequest("missing sender".into()))?;
-
-    Ok(
-        if is_dependabot(author) && pr.action == PullRequestWebhookEventAction::Opened {
-            handle_pull_request_opened_by_dependabot(request, body, webhook_event, pr).await?
-        } else {
-            "PR not by dependabot or action not 'opened'".into()
-        },
-    )
 }
 
 async fn handle_pull_request_opened_by_dependabot(
