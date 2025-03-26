@@ -82,14 +82,14 @@ impl Context {
         &self,
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<String, ExecutionError> {
-        let (signature, secret) = get_signature_and_secret(request).await?;
+        let webhook_secret = get_secret(request).await?;
         let sender = match signature::verify(&self.expected_signature, &secret, self.body.as_ref())
         {
             signature::VerificationResult::Success => Sender::GitHub,
             signature::VerificationResult::Failure => Sender::Unknown,
         };
-// AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY
-// AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_WEBHOOK_SECRET
+        // AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY
+        // AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_WEBHOOK_SECRET
         if sender == Sender::GitHub {
             let Some(private_key) =
                 get_secret("auto-merge-dependabot-pull-requests-private-key-1").await
@@ -142,20 +142,26 @@ async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::
         .await
 }
 
-async fn get_secret(secret_id: &str) -> Option<String> {
-    let Ok(aws_session_token) = std::env::var("AWS_SESSION_TOKEN") else {
-        eprintln!("AWS_SESSION_TOKEN not set");
-        return None;
-    };
+async fn get_secret(secret_id_env_var_name: &str) -> Result<String, ExecutionError> {
+    let aws_session_token = std::env::var("AWS_SESSION_TOKEN")
+        .map_err(|_| ExecutionError::MalformedRequest("AWS_SESSION_TOKEN not set".to_string()))?;
 
-    let Ok(json) = request_secret(aws_session_token, secret_id).await else {
-        eprintln!("Failed to get secret from AWS");
-        return None;
-    };
+    let secret_id = std::env::var(secret_id_env_var_name).map_err(|_| {
+        ExecutionError::MalformedRequest(format!("Failed to get env var {secret_id_env_var_name}"))
+    })?;
+
+    let json = request_secret(aws_session_token, &secret_id)
+        .await
+        .map_err(|_| {
+            ExecutionError::MalformedRequest(format!("Failed to get secret id {secret_id} "))
+        })?;
 
     json.get("SecretString")
         .and_then(|s| s.as_str())
         .map(ToString::to_string)
+        .ok_or(ExecutionError::MalformedRequest(format!(
+            "No SecretString in JSON"
+        )))
 }
 
 /*
