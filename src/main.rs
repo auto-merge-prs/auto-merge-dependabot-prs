@@ -8,7 +8,7 @@ use octocrab::{
             payload::{PullRequestWebhookEventAction, PullRequestWebhookEventPayload},
             WebhookEvent, WebhookEventPayload,
         },
-        AppId, Author, UserId,
+        Author, UserId,
     },
     Octocrab,
 };
@@ -25,7 +25,7 @@ async fn main() -> Result<(), Error> {
 }
 
 struct Context {
-    request: Request,
+    body: Body,
     webhook_event: WebhookEvent,
     conf: Configuration,
     expected_signature: String,
@@ -40,31 +40,35 @@ impl Context {
             .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
 
         Ok(Self {
-            request,
+            body,
             webhook_event,
             conf: Configuration::from_env(),
             expected_signature,
         })
     }
 
-    async fn handle_webhook_event(&self) {}
+    async fn handle_webhook_event(&self) -> Result<String, ExecutionError> {
+        match &self.webhook_event.specific {
+            WebhookEventPayload::PullRequest(pr) => self.handle_pull_request_event(pr).await,
+            _ => Ok("not a pull request event".into()),
+        }
+    }
+
+    async fn handle_pull_request_event(
+        &self,
+        pr: &PullRequestWebhookEventPayload,
+    ) -> Result<String, ExecutionError> {
+    }
 }
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
     let context = Context::new(request).await?;
-    match &context.webhook_event.specific {
-        WebhookEventPayload::PullRequest(pr) => {
-            handle_pull_request_event(&request, body, &webhook_event, pr).await
-        }
-        _ => Ok("not a pull request event".into()),
-    }
 }
 
 async fn handle_pull_request_event(
     request: &Request,
     body: &String,
     webhook_event: &WebhookEvent,
-    pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
     let author = webhook_event
         .sender
