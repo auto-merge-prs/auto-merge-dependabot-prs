@@ -24,7 +24,8 @@ async fn main() -> Result<(), Error> {
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
     let (event, body) = event_and_body(&request).await?;
-    let webhook_event = WebhookEvent::try_from_header_and_body(event, body).unwrap();
+    let webhook_event = WebhookEvent::try_from_header_and_body(event, body)
+        .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
     match &webhook_event.specific {
         WebhookEventPayload::PullRequest(pr) => {
             handle_pull_request_event(&request, body, &webhook_event, pr).await
@@ -39,13 +40,16 @@ async fn handle_pull_request_event(
     webhook_event: &WebhookEvent,
     pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
-    let author = webhook_event.sender.as_ref().unwrap();
+    let author = webhook_event
+        .sender
+        .as_ref()
+        .ok_or(ExecutionError::MalformedRequest("missing sender".into()))?;
 
     Ok(
         if is_dependabot(author) && pr.action == PullRequestWebhookEventAction::Opened {
             handle_pull_request_opened_by_dependabot(request, body, webhook_event, pr).await?
         } else {
-            "NOT PR opened by dependabot. No action.".into()
+            "PR not by dependabot or action not 'opened'".into()
         },
     )
 }
@@ -56,23 +60,7 @@ async fn handle_pull_request_opened_by_dependabot(
     webhook_event: &WebhookEvent,
     pr: &PullRequestWebhookEventPayload,
 ) -> Result<String, ExecutionError> {
-    let Some(signature) = request
-        .headers()
-        .get("X-Hub-Signature-256")
-        .map(|h| h.to_str().unwrap())
-    else {
-        return Err(ExecutionError::MalformedRequest(
-            "missing X-Hub-Signature-256 header".into(),
-        ));
-    };
-
-    let Some(secret) = get_secret("auto-merge-dependabot-pull-requests-webhook-secret").await
-    else {
-        return Err(ExecutionError::MalformedRequest(
-            "failed to get webhook secret".into(),
-        ));
-    };
-
+    let (signature, secret) = get_signature_and_secret(request).await?;
     let sender = match signature::verify(signature, &secret, body.as_bytes()) {
         signature::VerificationResult::Success => Sender::GitHub,
         signature::VerificationResult::Failure => Sender::Unknown,
@@ -203,6 +191,24 @@ async fn event_and_body(request: &Request) -> Result<(&str, &String), ExecutionE
     };
 
     Ok((event, body))
+}
+
+async fn get_signature_and_secret(request: &Request) -> Result<(&str, String), ExecutionError> {
+    let signature = request
+        .headers()
+        .get("X-Hub-Signature-256")
+        .map(|h| h.to_str().unwrap())
+        .ok_or(ExecutionError::MalformedRequest(
+            "missing X-Hub-Signature-256 header".into(),
+        ))?;
+
+    let secret = get_secret("auto-merge-dependabot-pull-requests-webhook-secret")
+        .await
+        .ok_or(ExecutionError::MalformedRequest(
+            "failed to get webhook secret".into(),
+        ))?;
+
+    Ok((signature, secret))
 }
 
 /*
