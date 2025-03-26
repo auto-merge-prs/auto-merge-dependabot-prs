@@ -84,29 +84,36 @@ impl Context {
     ) -> Result<String, ExecutionError> {
         let sender = self.sender().await?;
         if sender == Sender::GitHub {
-            let private_key = get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY").await?;
-            let jwt_key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
-            let octocrab = Octocrab::builder()
-                .app(self.conf.app_id, jwt_key)
-                .build()
-                .unwrap()
-                .installation(match webhook_event.installation.as_ref().unwrap() {
-                    octocrab::models::webhook_events::EventInstallation::Full(installation) => {
-                        installation.id
-                    }
-                    octocrab::models::webhook_events::EventInstallation::Minimal(
-                        event_installation_id,
-                    ) => event_installation_id.id,
-                })
-                .unwrap();
-            match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "Dry-run (no action taken): If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
-                Ok(_) => Ok("created dry-run comment".into()),
-                Err(e) => Ok(format!("Failed to create dry-run comment {:?}", e)),
-            }
+            self.enable_auto_merge(pr).await
         } else {
             Err(ExecutionError::MalformedRequest(
                 "invalid dependabot signature".into(),
             ))
+        }
+    }
+
+    async fn enable_auto_merge(
+        &self,
+        pr: &PullRequestWebhookEventPayload,
+    ) -> Result<String, ExecutionError> {
+        let private_key = get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY").await?;
+        let jwt_key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
+        let octocrab = Octocrab::builder()
+            .app(self.conf.app_id, jwt_key)
+            .build()
+            .unwrap()
+            .installation(match self.webhook_event.installation.as_ref().unwrap() {
+                octocrab::models::webhook_events::EventInstallation::Full(installation) => {
+                    installation.id
+                }
+                octocrab::models::webhook_events::EventInstallation::Minimal(
+                    event_installation_id,
+                ) => event_installation_id.id,
+            })
+            .unwrap();
+        match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "Dry-run (no action taken): If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
+            Ok(_) => Ok("created dry-run comment".into()),
+            Err(e) => Ok(format!("Failed to create dry-run comment {:?}", e)),
         }
     }
 
