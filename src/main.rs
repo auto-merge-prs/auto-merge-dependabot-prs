@@ -97,7 +97,7 @@ impl Context {
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<String, ExecutionError> {
         let octocrab = self.github_app_installation_instance().await?;
-        match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "(just a dry-run test) If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
+        match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "(just a dry-run test) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀").await {
             Ok(_) => Ok("created dry-run comment".into()),
             Err(e) => Ok(format!("Failed to create dry-run comment {:?}", e)),
         }
@@ -162,13 +162,14 @@ async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::
         .await
 }
 
-async fn get_secret(secret_id_env_var_name: &str) -> Result<String, ExecutionError> {
-    let aws_session_token = std::env::var("AWS_SESSION_TOKEN")
-        .map_err(|_| ExecutionError::MalformedRequest("AWS_SESSION_TOKEN not set".to_string()))?;
+fn get_required_env_var(env_var_name: &str) -> Result<String, ExecutionError> {
+    std::env::var(env_var_name)
+        .map_err(|_| ExecutionError::ConfigurationError(format!("env var not set: {env_var_name}")))
+}
 
-    let secret_id = std::env::var(secret_id_env_var_name).map_err(|_| {
-        ExecutionError::MalformedRequest(format!("Failed to get env var {secret_id_env_var_name}"))
-    })?;
+async fn get_secret(secret_id_env_var_name: &str) -> Result<String, ExecutionError> {
+    let aws_session_token = get_required_env_var("AWS_SESSION_TOKEN")?;
+    let secret_id = get_required_env_var(secret_id_env_var_name)?;
 
     let json = request_secret(aws_session_token, &secret_id)
         .await
@@ -186,14 +187,17 @@ async fn get_secret(secret_id_env_var_name: &str) -> Result<String, ExecutionErr
 
 #[derive(Debug, thiserror::Error)]
 pub enum ExecutionError {
-    #[error("unexpected error: {0}")]
+    #[error("malformed request: {0}")]
     MalformedRequest(String),
+    #[error("conbfiguration error: {0}")]
+    ConfigurationError(String),
 }
 
 impl From<ExecutionError> for Diagnostic {
     fn from(value: ExecutionError) -> Diagnostic {
         let (error_type, error_message) = match value {
             ExecutionError::MalformedRequest(err) => ("MalformedRequest", err.to_string()),
+            ExecutionError::ConfigurationError(err) => ("ConfigurationError", err.to_string()),
         };
         Diagnostic {
             error_type: error_type.into(),
