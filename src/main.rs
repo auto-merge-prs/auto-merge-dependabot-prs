@@ -83,13 +83,14 @@ impl Context {
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<String, ExecutionError> {
         let (signature, secret) = get_signature_and_secret(request).await?;
-        let sender = match signature::verify(signature, &secret, body.as_bytes()) {
+        let sender = match signature::verify(&self.expected_signature, &secret, self.body.as_ref())
+        {
             signature::VerificationResult::Success => Sender::GitHub,
             signature::VerificationResult::Failure => Sender::Unknown,
         };
-
+// AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY
+// AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_WEBHOOK_SECRET
         if sender == Sender::GitHub {
-            let app_id = 1162951; // https://github.com/settings/apps/auto-merge-dependabot-prs
             let Some(private_key) =
                 get_secret("auto-merge-dependabot-pull-requests-private-key-1").await
             else {
@@ -100,7 +101,7 @@ impl Context {
             let key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
 
             let octocrab = Octocrab::builder()
-                .app(app_id.into(), key)
+                .app(self.conf.app_id, key)
                 .build()
                 .unwrap()
                 .installation(match webhook_event.installation.as_ref().unwrap() {
