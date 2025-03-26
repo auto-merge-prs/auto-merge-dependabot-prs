@@ -51,7 +51,7 @@ impl Context {
     async fn handle_webhook_event(&self) -> Result<&'static str, ExecutionError> {
         match &self.webhook_event.specific {
             WebhookEventPayload::PullRequest(pr) => self.handle_pull_request_event(pr).await,
-            _ => Ok("not a pull request event".into()),
+            _ => Ok("not a pull request event"),
         }
     }
 
@@ -63,13 +63,13 @@ impl Context {
             .webhook_event
             .sender
             .as_ref()
-            .ok_or(ExecutionError::MalformedRequest("missing sender".into()))?;
+            .ok_or(ExecutionError::MalformedRequest("missing sender"))?;
 
         Ok(
             if is_dependabot(author) && pr.action == PullRequestWebhookEventAction::Opened {
                 self.handle_pull_request_opened_by_dependabot(pr).await?
             } else {
-                "PR not by dependabot or action not 'opened'".into()
+                "PR not by dependabot or action not 'opened'"
             },
         )
     }
@@ -83,7 +83,7 @@ impl Context {
             self.enable_auto_merge(pr).await
         } else {
             Err(ExecutionError::MalformedRequest(
-                "invalid dependabot signature".into(),
+                "invalid dependabot signature",
             ))
         }
     }
@@ -101,8 +101,8 @@ impl Context {
             .create_comment(pr.number, comment)
             .await
         {
-            Ok(_) => Ok("created dry-run comment".into()),
-            Err(_) => Ok("Failed to create dry-run comment".into()),
+            Ok(_) => Ok("created dry-run comment"),
+            Err(_) => Ok("Failed to create dry-run comment"),
         }
     }
 
@@ -115,7 +115,7 @@ impl Context {
             .build()
             .unwrap()
             .installation(self.installation_id())
-            .map_err(|e| ExecutionError::ConfigurationError("could not get installation instance"))
+            .map_err(|_| ExecutionError::ConfigurationError("could not get installation instance"))
     }
 
     fn installation_id(&self) -> InstallationId {
@@ -222,7 +222,7 @@ fn request_into_event_and_signature_and_body(
         .get("X-Hub-Signature-256")
         .map(|v| v.to_str().unwrap())
         .ok_or(ExecutionError::MalformedRequest(
-            "missing X-Hub-Signature-256 header".into(),
+            "missing X-Hub-Signature-256 header",
         ))?;
 
     let event = request
@@ -230,7 +230,7 @@ fn request_into_event_and_signature_and_body(
         .get("X-GitHub-Event")
         .map(|v| v.to_str().unwrap())
         .ok_or(ExecutionError::MalformedRequest(
-            "missing X-GitHub-Event header".into(),
+            "missing X-GitHub-Event header",
         ))?;
 
     Ok((
