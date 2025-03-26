@@ -7,13 +7,15 @@ use octocrab::{
             payload::{PullRequestWebhookEventAction, PullRequestWebhookEventPayload},
             WebhookEvent, WebhookEventPayload,
         },
-        Author, UserId,
+        AppId, Author, UserId,
     },
     Octocrab,
 };
 use serde_json::Value;
 
 mod signature;
+mod configuration;
+
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -23,6 +25,7 @@ async fn main() -> Result<(), Error> {
 }
 
 async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError> {
+    let conf = configuration::Configuration::from_env();
     let (event, body) = event_and_body(&request).await?;
     let webhook_event = WebhookEvent::try_from_header_and_body(event, body)
         .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
