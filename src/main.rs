@@ -93,11 +93,11 @@ impl Context {
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<&'static str, ExecutionError> {
         let octocrab = self.github_app_installation_instance().await?;
-        let repo = pr.pull_request.repo.as_ref().unwrap();
-        let owner = &repo.owner.as_ref().unwrap().login;
+        let repo = "cargo-public-api"; // TODO: pr.pull_request.repo.as_ref().unwrap();
+        let owner = "cargo-public-api"; // TODO: &repo.owner.as_ref().unwrap().login;
         let comment = "(dry-run test) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
         match octocrab
-            .issues(owner, &repo.name)
+            .issues(owner, repo)
             .create_comment(pr.number, comment)
             .await
         {
