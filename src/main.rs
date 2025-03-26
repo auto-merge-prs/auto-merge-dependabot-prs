@@ -97,7 +97,7 @@ impl Context {
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<String, ExecutionError> {
         let octocrab = self.github_app_installation_instance().await?;
-        match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "Dry-run (no action taken): If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
+        match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "(just a dry-run test) If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
             Ok(_) => Ok("created dry-run comment".into()),
             Err(e) => Ok(format!("Failed to create dry-run comment {:?}", e)),
         }
