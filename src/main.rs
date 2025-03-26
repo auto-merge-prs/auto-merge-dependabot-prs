@@ -71,58 +71,56 @@ impl Context {
 
         Ok(
             if is_dependabot(author) && pr.action == PullRequestWebhookEventAction::Opened {
-                handle_pull_request_opened_by_dependabot(request, body, webhook_event, pr).await?
+                self.handle_pull_request_opened_by_dependabot(pr).await?
             } else {
                 "PR not by dependabot or action not 'opened'".into()
             },
         )
     }
-}
 
-async fn handle_pull_request_opened_by_dependabot(
-    request: &Request,
-    body: &String,
-    webhook_event: &WebhookEvent,
-    pr: &PullRequestWebhookEventPayload,
-) -> Result<String, ExecutionError> {
-    let (signature, secret) = get_signature_and_secret(request).await?;
-    let sender = match signature::verify(signature, &secret, body.as_bytes()) {
-        signature::VerificationResult::Success => Sender::GitHub,
-        signature::VerificationResult::Failure => Sender::Unknown,
-    };
-
-    if sender == Sender::GitHub {
-        let app_id = 1162951; // https://github.com/settings/apps/auto-merge-dependabot-prs
-        let Some(private_key) =
-            get_secret("auto-merge-dependabot-pull-requests-private-key-1").await
-        else {
-            return Err(ExecutionError::MalformedRequest(
-                "failed to get webhook secret".into(),
-            ));
+    async fn handle_pull_request_opened_by_dependabot(
+        &self,
+        pr: &PullRequestWebhookEventPayload,
+    ) -> Result<String, ExecutionError> {
+        let (signature, secret) = get_signature_and_secret(request).await?;
+        let sender = match signature::verify(signature, &secret, body.as_bytes()) {
+            signature::VerificationResult::Success => Sender::GitHub,
+            signature::VerificationResult::Failure => Sender::Unknown,
         };
-        let key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
 
-        let octocrab = Octocrab::builder()
-            .app(app_id.into(), key)
-            .build()
-            .unwrap()
-            .installation(match webhook_event.installation.as_ref().unwrap() {
-                octocrab::models::webhook_events::EventInstallation::Full(installation) => {
-                    installation.id
-                }
-                octocrab::models::webhook_events::EventInstallation::Minimal(
-                    event_installation_id,
-                ) => event_installation_id.id,
-            })
-            .unwrap();
-        match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "Dry-run (no action taken): If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
-            Ok(_) => Ok("created dry-run comment".into()),
-            Err(e) => Ok(format!("Failed to create dry-run comment {:?}", e)),
+        if sender == Sender::GitHub {
+            let app_id = 1162951; // https://github.com/settings/apps/auto-merge-dependabot-prs
+            let Some(private_key) =
+                get_secret("auto-merge-dependabot-pull-requests-private-key-1").await
+            else {
+                return Err(ExecutionError::MalformedRequest(
+                    "failed to get webhook secret".into(),
+                ));
+            };
+            let key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
+
+            let octocrab = Octocrab::builder()
+                .app(app_id.into(), key)
+                .build()
+                .unwrap()
+                .installation(match webhook_event.installation.as_ref().unwrap() {
+                    octocrab::models::webhook_events::EventInstallation::Full(installation) => {
+                        installation.id
+                    }
+                    octocrab::models::webhook_events::EventInstallation::Minimal(
+                        event_installation_id,
+                    ) => event_installation_id.id,
+                })
+                .unwrap();
+            match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "Dry-run (no action taken): If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
+                Ok(_) => Ok("created dry-run comment".into()),
+                Err(e) => Ok(format!("Failed to create dry-run comment {:?}", e)),
+            }
+        } else {
+            Err(ExecutionError::MalformedRequest(
+                "invalid dependabot signature".into(),
+            ))
         }
-    } else {
-        Err(ExecutionError::MalformedRequest(
-            "invalid dependabot signature".into(),
-        ))
     }
 }
 
