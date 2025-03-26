@@ -36,8 +36,7 @@ struct Context {
 impl Context {
     async fn new(request: Request) -> Result<Self, ExecutionError> {
         let (github_event, expected_signature, body) =
-            request_into_event_and_signature_and_body(request)
-                .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
+            request_into_event_and_signature_and_body(request)?;
         let webhook_event = WebhookEvent::try_from_header_and_body(&github_event, &body)
             .map_err(|e| ExecutionError::MalformedRequest(e.to_string()))?;
 
