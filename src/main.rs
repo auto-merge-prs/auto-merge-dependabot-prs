@@ -1,4 +1,3 @@
-use configuration::Configuration;
 use lambda_http::{service_fn, tracing, Body, Error, Request};
 mod http_handler;
 use lambda_runtime::Diagnostic;
@@ -8,13 +7,12 @@ use octocrab::{
             payload::{PullRequestWebhookEventAction, PullRequestWebhookEventPayload},
             WebhookEvent, WebhookEventPayload,
         },
-        Author, InstallationId, UserId,
+        AppId, Author, InstallationId, UserId,
     },
     Octocrab,
 };
 use serde_json::Value;
 
-mod configuration;
 mod signature;
 
 #[tokio::main]
@@ -32,7 +30,6 @@ async fn handle_webhook_event(request: Request) -> Result<String, ExecutionError
 struct Context {
     body: Body,
     webhook_event: WebhookEvent,
-    conf: Configuration,
     expected_signature: String,
 }
 
@@ -47,7 +44,6 @@ impl Context {
         Ok(Self {
             body,
             webhook_event,
-            conf: Configuration::from_env(),
             expected_signature,
         })
     }
@@ -113,8 +109,9 @@ impl Context {
     async fn github_app_installation_instance(&self) -> Result<Octocrab, ExecutionError> {
         let private_key = get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY").await?;
         let jwt_key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
+        let app_id = get_required_env_var("AUTO_MERGE_DEPENDABOT_PRS_GITHUB_APP_ID")?;
         Octocrab::builder()
-            .app(self.conf.app_id, jwt_key)
+            .app(AppId(app_id.parse().unwrap()), jwt_key)
             .build()
             .unwrap()
             .installation(self.installation_id())
