@@ -99,7 +99,7 @@ impl Context {
         let octocrab = self.github_app_installation_instance().await?;
         let repo = pr.pull_request.repo.as_ref().unwrap();
         let owner = &repo.owner.as_ref().unwrap().login;
-        let comment = "(just a dry-run test) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
+        let comment = "(dry-run test) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
         match octocrab
             .issues(owner, &repo.name)
             .create_comment(pr.number, comment)
