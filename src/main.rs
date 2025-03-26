@@ -96,9 +96,17 @@ impl Context {
         &self,
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<String, ExecutionError> {
+        let octocrab = self.github_app_installation_instance().await?;
+        match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "Dry-run (no action taken): If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
+            Ok(_) => Ok("created dry-run comment".into()),
+            Err(e) => Ok(format!("Failed to create dry-run comment {:?}", e)),
+        }
+    }
+
+    async fn github_app_installation_instance(&self) -> Result<Octocrab, ExecutionError> {
         let private_key = get_secret("AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY").await?;
         let jwt_key = jsonwebtoken::EncodingKey::from_rsa_pem(private_key.as_bytes()).unwrap();
-        let octocrab = Octocrab::builder()
+        Octocrab::builder()
             .app(self.conf.app_id, jwt_key)
             .build()
             .unwrap()
@@ -110,11 +118,11 @@ impl Context {
                     event_installation_id,
                 ) => event_installation_id.id,
             })
-            .unwrap();
-        match octocrab.issues("cargo-public-api", "cargo-public-api").create_comment(pr.number, "Dry-run (no action taken): If CI passes, this dependabot PR will be [auto-merged](https://github.com/cargo-public-api/cargo-public-api/blob/main/.github/workflows/Auto-merge-dependabot-PRs.yml) 🚀").await {
-            Ok(_) => Ok("created dry-run comment".into()),
-            Err(e) => Ok(format!("Failed to create dry-run comment {:?}", e)),
-        }
+            .map_err(|e| {
+                ExecutionError::MalformedRequest(format!(
+                    "could not get installation instance: {e}"
+                ))
+            })
     }
 
     async fn sender(&self) -> Result<Sender, ExecutionError> {
