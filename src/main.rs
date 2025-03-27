@@ -7,7 +7,7 @@ use octocrab::{
             payload::{PullRequestWebhookEventAction, PullRequestWebhookEventPayload},
             WebhookEvent, WebhookEventPayload,
         },
-        AppId, Author, UserId,
+        AppId, Author,
     },
     Octocrab,
 };
@@ -66,7 +66,7 @@ impl Context {
             .ok_or(ExecutionError::MalformedRequest("missing sender"))?;
 
         Ok(
-            if is_dependabot(author) && pr.action == PullRequestWebhookEventAction::Opened {
+            if is_dependabot(author)? && pr.action == PullRequestWebhookEventAction::Opened {
                 self.handle_pull_request_opened_by_dependabot(pr).await?
             } else {
                 "PR not by dependabot or action not 'opened'"
@@ -96,7 +96,7 @@ impl Context {
         let repo = &self.webhook_event.repository.as_ref().unwrap();
         let owner = &repo.owner.as_ref().unwrap().login;
         let name = &repo.name;
-        let comment = "(dry-run test 3) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
+        let comment = "(dry-run test 4) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
         match octocrab
             .issues(owner, name)
             .create_comment(pr.number, comment)
@@ -135,8 +135,10 @@ impl Context {
     }
 }
 
-fn is_dependabot(author: &Author) -> bool {
-    author.login == "dependabot[bot]" && author.id == UserId(49699333)
+fn is_dependabot(author: &Author) -> Result<bool, ExecutionError> {
+    let name_and_id =
+        get_required_env_var("AUTO_MERGE_DEPENDABOT_PRS_DEPENDABOT_USER_NAME_AND_ID")?;
+    Ok(format!("{},{}", author.login, author.id) == name_and_id)
 }
 
 async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::Result<Value> {
