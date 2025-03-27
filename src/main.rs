@@ -41,8 +41,6 @@ impl Context {
         let webhook_event = WebhookEvent::try_from_header_and_body(&github_event, &body)
             .map_err(|_| ExecutionError::MalformedRequest("not a webhook event"))?;
 
-        println!("NORDH webhook_event: {:?}", webhook_event);
-
         Ok(Self {
             body,
             webhook_event,
@@ -95,12 +93,12 @@ impl Context {
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<&'static str, ExecutionError> {
         let octocrab = self.github_app_installation_instance().await?;
-        println!("NORDH pr: {:?}", pr);
-        let repo = "cargo-public-api"; // TODO: pr.pull_request.repo.as_ref().unwrap();
-        let owner = "cargo-public-api"; // TODO: &repo.owner.as_ref().unwrap().login;
+        let repo = &self.webhook_event.repository.as_ref().unwrap();
+        let owner = &repo.owner.as_ref().unwrap().login;
+        let name = &repo.name;
         let comment = "(dry-run test 2) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
         match octocrab
-            .issues(owner, repo)
+            .issues(owner, name)
             .create_comment(pr.number, comment)
             .await
         {
