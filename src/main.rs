@@ -96,7 +96,7 @@ impl Context {
         let repo = &self.webhook_event.repository.as_ref().unwrap();
         let owner = &repo.owner.as_ref().unwrap().login;
         let name = &repo.name;
-        let comment = "(dry-run test 2) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
+        let comment = "(dry-run test 3) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
         match octocrab
             .issues(owner, name)
             .create_comment(pr.number, comment)
