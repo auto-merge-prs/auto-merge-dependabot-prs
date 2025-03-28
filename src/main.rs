@@ -80,7 +80,7 @@ impl Context {
     ) -> Result<&'static str, ExecutionError> {
         let sender = self.sender().await?;
         if sender == Sender::GitHub {
-            self.enable_auto_merge(pr).await
+            self.announce_and_enable_auto_merge(pr).await
         } else {
             Err(ExecutionError::MalformedRequest(
                 "invalid dependabot signature",
@@ -94,25 +94,12 @@ impl Context {
 
     // {"data":{"disablePullRequestAutoMerge":null},"errors":[{"type":"NOT_FOUND","path":["disablePullRequestAutoMerge"],"locations":[{"line":1,"column":22}],"message":"Could not resolve to a node with the global id of 'PR_kwDOGpYTtM6P-Rmm222222222'"}]}
 
-    async fn enable_auto_merge(
+    async fn announce_auto_merge(
         &self,
-        pr: &PullRequestWebhookEventPayload,
-    ) -> Result<&'static str, ExecutionError> {
-        let octocrab = self.github_app_installation_instance().await?;
-        let pr_id = pr.pull_request.node_id.as_ref().unwrap();
+        octocrab: &Octocrab,
+        pr_id: &str,
+    ) -> Result<(), ExecutionError> {
         let comment = "(dry-run test 6) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
-        let _graphql_merge = json!({
-            "query": "mutation($id: ID!) {
-                enablePullRequestAutoMerge(input: { pullRequestId: $id }) {
-                    pullRequest {
-                        id
-                    }
-                }
-            }",
-            "variables": {
-                "id": pr_id
-            }
-        });
         let graphql_add_comment = json!({
             "query": "mutation($id: ID!, $body: String!) {
                 addComment(input: { subjectId: $id, body: $body }) {
@@ -136,12 +123,61 @@ impl Context {
             .and_then(|add_comment| add_comment.get("subject"))
             .and_then(|subject| subject.get("id"))
             .and_then(|id| id.as_str())
+            .ok_or(ExecutionError::GitHubError(
+                "could not get subject id".into(),
+            ))?;
+        if response_pr_id != pr_id {
+            return Err(ExecutionError::GitHubError("subject id mismatch".into()));
+        }
+        Ok(())
+    }
+
+    async fn enable_auto_merge(
+        &self,
+        octocrab: &Octocrab,
+        pr_id: &str,
+    ) -> Result<&'static str, ExecutionError> {
+        if true {
+            // TODO: remove this line
+            return Ok("skipping auto-merge for now but wrote a comment");
+        }
+        let graphql_auto_merge = json!({
+            "query": "mutation($id: ID!) {
+                enablePullRequestAutoMerge(input: { pullRequestId: $id }) {
+                    pullRequest {
+                        id
+                    }
+                }
+            }",
+            "variables": {
+                "id": pr_id
+            }
+        });
+        let add_comment_response: Value = octocrab
+            .graphql(&graphql_auto_merge)
+            .await
+            .map_err(|e| ExecutionError::GitHubError(e.to_string()))?;
+        let response_pr_id = add_comment_response
+            .get("data")
+            .and_then(|data| data.get("addComment"))
+            .and_then(|add_comment| add_comment.get("pullRequest"))
+            .and_then(|subject| subject.get("id"))
+            .and_then(|id| id.as_str())
             .ok_or(ExecutionError::GitHubError("could not get PR id".into()))?;
         if response_pr_id != pr_id {
             return Err(ExecutionError::GitHubError("PR id mismatch".into()));
         }
-
         Ok("enabled auto-merge via graphql")
+    }
+
+    async fn announce_and_enable_auto_merge(
+        &self,
+        pr: &PullRequestWebhookEventPayload,
+    ) -> Result<&'static str, ExecutionError> {
+        let octocrab = self.github_app_installation_instance().await?;
+        let pr_id = pr.pull_request.node_id.as_ref().unwrap();
+        self.announce_auto_merge(&octocrab, pr_id).await?;
+        self.enable_auto_merge(&octocrab, pr_id).await
     }
 
     async fn github_app_installation_instance(&self) -> Result<Octocrab, ExecutionError> {
