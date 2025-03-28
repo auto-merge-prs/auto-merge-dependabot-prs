@@ -88,12 +88,6 @@ impl Context {
         }
     }
 
-    // curl -vv -H "Authorization: Bearer $(pass show auto-merge-dependabot-pr-tmp)" -H "Content-Type: application/json" https://api.github.com/graphql -d '{ "query": "mutation($id: ID!) { disablePullRequestAutoMerge(input: { pullRequestId: $id }) { pullRequest { id } } }", "variables": { "id": "PR_kwDOGpYTtM6P-Rmm" } }'
-
-    // curl -vv -H "Authorization: Bearer $(pass show auto-merge-dependabot-pr-tmp)" -H "Content-Type: application/json" https://api.github.com/graphql -d '{ "query": "mutation($id: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $id }) { pullRequest { id } } }", "variables": { "id": "PR_kwDOGpYTtM6P-Rmm" } }'
-
-    // {"data":{"disablePullRequestAutoMerge":null},"errors":[{"type":"NOT_FOUND","path":["disablePullRequestAutoMerge"],"locations":[{"line":1,"column":22}],"message":"Could not resolve to a node with the global id of 'PR_kwDOGpYTtM6P-Rmm222222222'"}]}
-
     async fn announce_auto_merge(
         &self,
         octocrab: &Octocrab,
