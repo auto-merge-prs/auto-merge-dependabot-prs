@@ -11,7 +11,7 @@ use octocrab::{
     },
     Octocrab,
 };
-use serde_json::Value;
+use serde_json::{json, Value};
 
 mod signature;
 
@@ -88,23 +88,51 @@ impl Context {
         }
     }
 
+    // curl -vv -H "Authorization: Bearer $(pass show auto-merge-dependabot-pr-tmp)" -H "Content-Type: application/json" https://api.github.com/graphql -d '{ "query": "mutation($id: ID!) { disablePullRequestAutoMerge(input: { pullRequestId: $id }) { pullRequest { id } } }", "variables": { "id": "PR_kwDOGpYTtM6P-Rmm" } }'
+
+    // curl -vv -H "Authorization: Bearer $(pass show auto-merge-dependabot-pr-tmp)" -H "Content-Type: application/json" https://api.github.com/graphql -d '{ "query": "mutation($id: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $id }) { pullRequest { id } } }", "variables": { "id": "PR_kwDOGpYTtM6P-Rmm" } }'
+
     async fn enable_auto_merge(
         &self,
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<&'static str, ExecutionError> {
         let octocrab = self.github_app_installation_instance().await?;
-        let repo = &self.webhook_event.repository.as_ref().unwrap();
-        let owner = &repo.owner.as_ref().unwrap().login;
-        let name = &repo.name;
-        let comment = "(dry-run test 4) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
-        match octocrab
-            .issues(owner, name)
-            .create_comment(pr.number, comment)
-            .await
-        {
-            Ok(_) => Ok("created dry-run comment"),
-            Err(_) => Ok("Failed to create dry-run comment"),
-        }
+        // let repo = &self.webhook_event.repository.as_ref().unwrap();
+        // let owner = &repo.owner.as_ref().unwrap().login;
+        // let name = &repo.name;
+        let comment = "(dry-run test 6) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
+        let _graphql_merge = json!({
+            "query": "mutation($id: ID!) {
+                enablePullRequestAutoMerge(input: { pullRequestId: $id }) {
+                    pullRequest {
+                        id
+                    }
+                }
+            }",
+            "variables": {
+                "id": pr.pull_request.node_id.as_ref().unwrap()
+            }
+        });
+        let graphql_add_comment = json!({
+            "query": "mutation($id: ID!, $body: String!) {
+                addComment(input: { subjectId: $id, body: $body }) {
+                    subject {
+                        id
+                    }
+                }
+            }",
+            "variables": {
+                "id": pr.pull_request.node_id.as_ref().unwrap(),
+                "body": comment
+            }
+        });
+        let response: octocrab::Result<Value> = octocrab.graphql(&graphql_add_comment).await;
+        println!("NORDH {:?}", response);
+        Ok("enabled auto-merge tried at least")
+        // {
+        //     Ok(_) => Ok("created dry-run comment"),
+        //     Err(_) => Ok("Failed to create dry-run comment"),
+        // }
     }
 
     async fn github_app_installation_instance(&self) -> Result<Octocrab, ExecutionError> {
