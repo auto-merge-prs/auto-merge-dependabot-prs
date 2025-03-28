@@ -92,14 +92,14 @@ impl Context {
 
     // curl -vv -H "Authorization: Bearer $(pass show auto-merge-dependabot-pr-tmp)" -H "Content-Type: application/json" https://api.github.com/graphql -d '{ "query": "mutation($id: ID!) { enablePullRequestAutoMerge(input: { pullRequestId: $id }) { pullRequest { id } } }", "variables": { "id": "PR_kwDOGpYTtM6P-Rmm" } }'
 
+    // {"data":{"disablePullRequestAutoMerge":null},"errors":[{"type":"NOT_FOUND","path":["disablePullRequestAutoMerge"],"locations":[{"line":1,"column":22}],"message":"Could not resolve to a node with the global id of 'PR_kwDOGpYTtM6P-Rmm222222222'"}]}
+
     async fn enable_auto_merge(
         &self,
         pr: &PullRequestWebhookEventPayload,
     ) -> Result<&'static str, ExecutionError> {
         let octocrab = self.github_app_installation_instance().await?;
-        // let repo = &self.webhook_event.repository.as_ref().unwrap();
-        // let owner = &repo.owner.as_ref().unwrap().login;
-        // let name = &repo.name;
+        let pr_id = pr.pull_request.node_id.as_ref().unwrap();
         let comment = "(dry-run test 6) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
         let _graphql_merge = json!({
             "query": "mutation($id: ID!) {
@@ -110,7 +110,7 @@ impl Context {
                 }
             }",
             "variables": {
-                "id": pr.pull_request.node_id.as_ref().unwrap()
+                "id": pr_id
             }
         });
         let graphql_add_comment = json!({
@@ -122,17 +122,26 @@ impl Context {
                 }
             }",
             "variables": {
-                "id": pr.pull_request.node_id.as_ref().unwrap(),
+                "id": pr_id,
                 "body": comment
             }
         });
-        let response: octocrab::Result<Value> = octocrab.graphql(&graphql_add_comment).await;
-        println!("NORDH {:?}", response);
-        Ok("enabled auto-merge tried at least")
-        // {
-        //     Ok(_) => Ok("created dry-run comment"),
-        //     Err(_) => Ok("Failed to create dry-run comment"),
-        // }
+        let add_comment_response: Value = octocrab
+            .graphql(&graphql_add_comment)
+            .await
+            .map_err(|e| ExecutionError::GitHubError(e.to_string()))?;
+        let response_pr_id = add_comment_response
+            .get("data")
+            .and_then(|data| data.get("addComment"))
+            .and_then(|add_comment| add_comment.get("subject"))
+            .and_then(|subject| subject.get("id"))
+            .and_then(|id| id.as_str())
+            .ok_or(ExecutionError::GitHubError("could not get PR id".into()))?;
+        if response_pr_id != pr_id {
+            return Err(ExecutionError::GitHubError("PR id mismatch".into()));
+        }
+
+        Ok("enabled auto-merge via graphql")
     }
 
     async fn github_app_installation_instance(&self) -> Result<Octocrab, ExecutionError> {
@@ -211,7 +220,11 @@ pub enum ExecutionError {
     EnvVarNotSet(&'static str),
     #[error("missing secret with id: {0}")]
     MissingSecretId(String),
+    #[error("git hub error: {0}")]
+    GitHubError(String),
 }
+
+// NORDH Ok(Object {"data": Object {"addComment": Object {"subject": Object {"id": String("PR_kwDOGpYTtM6P-Rmm")}}}})
 
 impl From<ExecutionError> for Diagnostic {
     fn from(value: ExecutionError) -> Diagnostic {
@@ -220,6 +233,7 @@ impl From<ExecutionError> for Diagnostic {
             ExecutionError::EnvVarNotSet(err) => ("EnvVarNotSet", err.to_string()),
             ExecutionError::MissingSecretId(err) => ("MissingSecretId", err.to_string()),
             ExecutionError::ConfigurationError(err) => ("ConfigurationError", err.to_string()),
+            ExecutionError::GitHubError(err) => ("GitHubError", err.to_string()),
         };
         Diagnostic {
             error_type: error_type.into(),
