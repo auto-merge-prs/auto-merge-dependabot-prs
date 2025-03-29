@@ -12,7 +12,7 @@ use octocrab::{
     },
     Octocrab,
 };
-use serde_json::{json, Value};
+use serde_json::Value;
 
 mod signature;
 
@@ -89,7 +89,7 @@ impl Context {
         }
     }
 
-    async fn announce_auto_merge(
+    async fn announce_pull_request_auto_merge(
         &self,
         octocrab: &Octocrab,
         pr_id: String,
@@ -102,7 +102,7 @@ impl Context {
         pub struct AddComment;
 
         let variables = add_comment::Variables {
-            id: pr_id.to_string(),
+            id: pr_id.clone(),
             body: "(dry-run test 7) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀".to_string(),
         };
 
@@ -124,42 +124,41 @@ impl Context {
         }
     }
 
-    async fn enable_auto_merge(
+    async fn enable_pull_request_auto_merge(
         &self,
         octocrab: &Octocrab,
-        pr_id: &str,
+        pr_id: String,
     ) -> Result<&'static str, ExecutionError> {
         if !std::env::var("AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE").is_ok() {
             return Ok("skipping auto-merge for now, set AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE=1 to enable");
         }
 
-        let graphql_auto_merge = json!({
-            "query": "mutation($id: ID!) {
-                enablePullRequestAutoMerge(input: { pullRequestId: $id }) {
-                    pullRequest {
-                        id
-                    }
-                }
-            }",
-            "variables": {
-                "id": pr_id
-            }
-        });
-        let add_comment_response: Value = octocrab
-            .graphql(&graphql_auto_merge)
-            .await
-            .map_err(|e| ExecutionError::GitHubError(e.to_string()))?;
-        let response_pr_id = add_comment_response
-            .get("data")
-            .and_then(|data| data.get("addComment"))
-            .and_then(|add_comment| add_comment.get("pullRequest"))
-            .and_then(|subject| subject.get("id"))
-            .and_then(|id| id.as_str())
-            .ok_or(ExecutionError::GitHubError("could not get PR id".into()))?;
-        if response_pr_id != pr_id {
-            return Err(ExecutionError::GitHubError("PR id mismatch".into()));
+        #[derive(graphql_client::GraphQLQuery)]
+        #[graphql(
+            schema_path = "github_schema.graphql",
+            query_path = "src/enable_pull_request_auto_merge.graphql"
+        )]
+        pub struct EnablePullRequestAutoMerge;
+
+        let variables = enable_pull_request_auto_merge::Variables { id: pr_id.clone() };
+
+        let response: graphql_client::Response<enable_pull_request_auto_merge::ResponseData> =
+            octocrab
+                .graphql(&EnablePullRequestAutoMerge::build_query(variables))
+                .await
+                .map_err(|e| ExecutionError::GitHubError(e.to_string()))?;
+        if response
+            .data
+            .and_then(|x| x.enable_pull_request_auto_merge)
+            .and_then(|x| x.pull_request)
+            .map(|x| x.id)
+            .unwrap_or_default()
+            == pr_id
+        {
+            Ok("enabled auto-merge via graphql")
+        } else {
+            Err(ExecutionError::GitHubError("subject id mismatch".into()))
         }
-        Ok("enabled auto-merge via graphql")
     }
 
     async fn announce_and_enable_auto_merge(
@@ -168,8 +167,10 @@ impl Context {
     ) -> Result<&'static str, ExecutionError> {
         let octocrab = self.github_app_installation_instance().await?;
         let pr_id = pr.pull_request.node_id.as_ref().unwrap();
-        self.announce_auto_merge(&octocrab, pr_id.into()).await?;
-        self.enable_auto_merge(&octocrab, pr_id).await
+        self.announce_pull_request_auto_merge(&octocrab, pr_id.into())
+            .await?;
+        self.enable_pull_request_auto_merge(&octocrab, pr_id.into())
+            .await
     }
 
     async fn github_app_installation_instance(&self) -> Result<Octocrab, ExecutionError> {

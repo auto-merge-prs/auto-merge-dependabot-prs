@@ -1,0 +1,7 @@
+mutation EnablePullRequestAutoMerge($id: ID!) {
+    enablePullRequestAutoMerge(input: { pullRequestId: $id }) {
+        pullRequest {
+            id
+        }
+    }
+}
