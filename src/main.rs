@@ -129,7 +129,7 @@ impl Context {
         octocrab: &Octocrab,
         pr_id: String,
     ) -> Result<&'static str, ExecutionError> {
-        if !std::env::var("AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE").is_ok() {
+        if std::env::var("AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE").is_err() {
             return Ok("skipping auto-merge for now, set AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE=1 to enable");
         }
 
