@@ -129,10 +129,10 @@ impl Context {
         octocrab: &Octocrab,
         pr_id: &str,
     ) -> Result<&'static str, ExecutionError> {
-        if true {
-            // TODO: remove this line
-            return Ok("skipping auto-merge for now but wrote a comment");
+        if !std::env::var("AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE").is_ok() {
+            return Ok("skipping auto-merge for now, set AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE=1 to enable");
         }
+
         let graphql_auto_merge = json!({
             "query": "mutation($id: ID!) {
                 enablePullRequestAutoMerge(input: { pullRequestId: $id }) {
