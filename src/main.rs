@@ -101,15 +101,12 @@ impl Context {
             response_derives = "Clone, Debug"
         )]
         pub struct AddComment;
+
+        let mut variables = add_comment::Variables {
+            id: pr_id.to_string(),
+            body: "(dry-run test 6) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀".to_string(),
+        };
         
-        let comment = "(dry-run test 6) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
-        let graphql_add_comment = json!({
-            "query": "",
-            "variables": {
-                "id": pr_id,
-                "body": comment
-            }
-        });
         let add_comment_response: Value = octocrab
             .graphql(&graphql_add_comment)
             .await
