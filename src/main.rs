@@ -108,7 +108,7 @@ impl Context {
         };
         
         let add_comment_response: Value = octocrab
-            .graphql(&graphql_add_comment)
+            .graphql(&AddComment::build_query(variables))
             .await
             .map_err(|e| ExecutionError::GitHubError(e.to_string()))?;
         let response_pr_id = add_comment_response
