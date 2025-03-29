@@ -93,6 +93,15 @@ impl Context {
         octocrab: &Octocrab,
         pr_id: &str,
     ) -> Result<(), ExecutionError> {
+        #[derive(graphql_client::GraphQLQuery)]
+        #[graphql(
+            schema_path = "github_schema.graphql",
+            query_path = "src/add_comment.graphql",
+            variables_derives = "Clone, Debug",
+            response_derives = "Clone, Debug"
+        )]
+        pub struct AddComment;
+        
         let comment = "(dry-run test 6) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
         let graphql_add_comment = json!({
             "query": "",
