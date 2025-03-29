@@ -1,3 +1,4 @@
+use graphql_client::GraphQLQuery;
 use lambda_http::{service_fn, tracing, Body, Error, Request};
 mod http_handler;
 use lambda_runtime::Diagnostic;
@@ -96,18 +97,16 @@ impl Context {
         #[derive(graphql_client::GraphQLQuery)]
         #[graphql(
             schema_path = "github_schema.graphql",
-            query_path = "src/add_comment.graphql",
-            variables_derives = "Clone, Debug",
-            response_derives = "Clone, Debug"
+            query_path = "src/add_comment.graphql"
         )]
         pub struct AddComment;
 
-        let mut variables = add_comment::Variables {
+        let variables = add_comment::Variables {
             id: pr_id.to_string(),
             body: "(dry-run test 6) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀".to_string(),
         };
-        
-        let add_comment_response: Value = octocrab
+
+        let response: graphql_client::Response<add_comment::ResponseData> = octocrab
             .graphql(&AddComment::build_query(variables))
             .await
             .map_err(|e| ExecutionError::GitHubError(e.to_string()))?;
