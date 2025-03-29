@@ -92,7 +92,7 @@ impl Context {
     async fn announce_auto_merge(
         &self,
         octocrab: &Octocrab,
-        pr_id: &str,
+        pr_id: String,
     ) -> Result<(), ExecutionError> {
         #[derive(graphql_client::GraphQLQuery)]
         #[graphql(
@@ -103,26 +103,25 @@ impl Context {
 
         let variables = add_comment::Variables {
             id: pr_id.to_string(),
-            body: "(dry-run test 6) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀".to_string(),
+            body: "(dry-run test 7) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀".to_string(),
         };
 
         let response: graphql_client::Response<add_comment::ResponseData> = octocrab
             .graphql(&AddComment::build_query(variables))
             .await
             .map_err(|e| ExecutionError::GitHubError(e.to_string()))?;
-        let response_pr_id = add_comment_response
-            .get("data")
-            .and_then(|data| data.get("addComment"))
-            .and_then(|add_comment| add_comment.get("subject"))
-            .and_then(|subject| subject.get("id"))
-            .and_then(|id| id.as_str())
-            .ok_or(ExecutionError::GitHubError(
-                "could not get subject id".into(),
-            ))?;
-        if response_pr_id != pr_id {
-            return Err(ExecutionError::GitHubError("subject id mismatch".into()));
+        if response
+            .data
+            .and_then(|x| x.add_comment)
+            .and_then(|x| x.subject)
+            .map(|x| x.id)
+            .unwrap_or_default()
+            == pr_id
+        {
+            Ok(())
+        } else {
+            Err(ExecutionError::GitHubError("subject id mismatch".into()))
         }
-        Ok(())
     }
 
     async fn enable_auto_merge(
@@ -169,7 +168,7 @@ impl Context {
     ) -> Result<&'static str, ExecutionError> {
         let octocrab = self.github_app_installation_instance().await?;
         let pr_id = pr.pull_request.node_id.as_ref().unwrap();
-        self.announce_auto_merge(&octocrab, pr_id).await?;
+        self.announce_auto_merge(&octocrab, pr_id.into()).await?;
         self.enable_auto_merge(&octocrab, pr_id).await
     }
 
