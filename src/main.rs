@@ -95,13 +95,7 @@ impl Context {
     ) -> Result<(), ExecutionError> {
         let comment = "(dry-run test 6) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀";
         let graphql_add_comment = json!({
-            "query": "mutation($id: ID!, $body: String!) {
-                addComment(input: { subjectId: $id, body: $body }) {
-                    subject {
-                        id
-                    }
-                }
-            }",
+            "query": "",
             "variables": {
                 "id": pr_id,
                 "body": comment
