@@ -28,3 +28,10 @@ version = "0.13.0"
 version = "0.10.71"
 features = ["vendored"] # See https://github.com/sfackler/rust-openssl/issues/2217
 
+[profile.release]
+debug = true
+opt-level = "z" # Optimize for size
+lto = true # Enable link-time optimization
+panic = "abort" # Use abort on panic
+codegen-units = 1 # Reduce the number of codegen units to improve optimization
+strip = false
