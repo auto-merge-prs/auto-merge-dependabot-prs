@@ -9,6 +9,10 @@ Using this app is more secure than using a `pull_request_target`-triggered GitHu
 * The GitHub App credentials never enter any GitHub Actions workflow (contrary to the PAT) so the risk for credential leak is very low.
 * Even if the GitHub App credentials were to leak somehow they would only give write access to Pull Requests (contrary to the PAT).
 
-## License
+### License
 
 THE SOFTWARE IS PROVIDED "AS IS", WITHOUT WARRANTY OF ANY KIND, EXPRESS OR IMPLIED, INCLUDING BUT NOT LIMITED TO THE WARRANTIES OF MERCHANTABILITY, FITNESS FOR A PARTICULAR PURPOSE AND NONINFRINGEMENT. IN NO EVENT SHALL THE AUTHORS OR COPYRIGHT HOLDERS BE LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+### Acknowledgements
+
+The logo is [this](https://github.com/microsoft/fluentui-emoji/blob/main/assets/Rocket/3D/rocket_3d.png) image under [this](https://github.com/microsoft/fluentui-emoji/blob/main/LICENSE) license.
