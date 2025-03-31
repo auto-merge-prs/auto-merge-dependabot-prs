@@ -101,9 +101,10 @@ impl Context {
         )]
         pub struct AddComment;
 
+        let dry_run_prefix = if dry_run() { "(dry-run) " } else { "" };
         let variables = add_comment::Variables {
             id: pr_id.clone(),
-            body: "(dry-run test 7) If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀".to_string(),
+            body: format!("{dry_run_prefix}If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀"),
         };
 
         let response: graphql_client::Response<add_comment::ResponseData> = octocrab
@@ -129,7 +130,7 @@ impl Context {
         octocrab: &Octocrab,
         pr_id: String,
     ) -> Result<&'static str, ExecutionError> {
-        if std::env::var("AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE").is_err() {
+        if dry_run() {
             return Ok("skipping auto-merge for now, set AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE=1 to enable");
         }
 
@@ -205,6 +206,10 @@ fn is_dependabot(author: &Author) -> Result<bool, ExecutionError> {
     let name_and_id =
         get_required_env_var("AUTO_MERGE_DEPENDABOT_PRS_DEPENDABOT_USER_NAME_AND_ID")?;
     Ok(format!("{},{}", author.login, author.id) == name_and_id)
+}
+
+fn dry_run() -> bool {
+    std::env::var("AUTO_MERGE_DEPENDABOT_PRS_ACTUALLY_MERGE").is_err()
 }
 
 async fn request_secret(aws_session_token: String, secret_id: &str) -> reqwest::Result<Value> {
