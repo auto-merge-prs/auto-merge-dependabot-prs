@@ -6,9 +6,9 @@ use octocrab::{
     models::{
         webhook_events::{
             payload::{PullRequestWebhookEventAction, PullRequestWebhookEventPayload},
-            WebhookEvent, WebhookEventPayload,
+            EventInstallation, WebhookEvent, WebhookEventPayload,
         },
-        AppId, Author,
+        AppId, Author, InstallationId,
     },
     Octocrab,
 };
@@ -182,8 +182,15 @@ impl Context {
             .app(AppId(app_id.parse().unwrap()), jwt_key)
             .build()
             .unwrap()
-            .installation(self.webhook_event.installation.as_ref().unwrap().id())
+            .installation(self.installation_id())
             .map_err(|_| ExecutionError::ConfigurationError("could not get installation instance"))
+    }
+
+    pub fn installation_id(&self) -> InstallationId {
+        match self.webhook_event.installation.as_ref().unwrap() {
+            EventInstallation::Full(installation) => installation.id,
+            EventInstallation::Minimal(installation) => installation.id,
+        }
     }
 
     async fn sender(&self) -> Result<Sender, ExecutionError> {
