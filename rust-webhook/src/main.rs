@@ -14,6 +14,7 @@ use octocrab::{
 use serde_json::Value;
 
 mod signature;
+mod email;
 
 #[tokio::main]
 async fn main() -> Result<(), Error> {
@@ -64,8 +65,41 @@ impl Context {
     }
 
     async fn handle_webhook_event(&self) -> ExecutionResult {
+        use octocrab::models::webhook_events::payload::{InstallationWebhookEventAction, InstallationRepositoriesWebhookEventAction};
+        use crate::email::send_admin_email;
         match &self.webhook_event.specific {
             WebhookEventPayload::PullRequest(pr) => self.handle_pull_request_event(pr).await,
+            WebhookEventPayload::Installation(install) => {
+                match install.action {
+                    InstallationWebhookEventAction::Created | InstallationWebhookEventAction::Deleted => {
+                        let subject = match install.action {
+                            InstallationWebhookEventAction::Created => "GitHub App Installed",
+                            InstallationWebhookEventAction::Deleted => "GitHub App Uninstalled",
+                            _ => unreachable!(),
+                        };
+                        let body = format!("GitHub App was {}. Payload: {:#?}", subject, install);
+                        // Send email and ignore errors (log if needed)
+                        let _ = send_admin_email(subject, &body).await;
+                        Ok(OkResult::StaticStr(subject))
+                    }
+                    _ => Ok(OkResult::StaticStr("installation event ignored")),
+                }
+            }
+            WebhookEventPayload::InstallationRepositories(install_repos) => {
+                match install_repos.action {
+                    InstallationRepositoriesWebhookEventAction::Added | InstallationRepositoriesWebhookEventAction::Removed => {
+                        let subject = match install_repos.action {
+                            InstallationRepositoriesWebhookEventAction::Added => "GitHub App Repos Added",
+                            InstallationRepositoriesWebhookEventAction::Removed => "GitHub App Repos Removed",
+                            _ => "GitHub App Repos Changed",
+                        };
+                        let body = format!("GitHub App repositories were {}. Payload: {:#?}", subject, install_repos);
+                        let _ = send_admin_email(subject, &body).await;
+                        Ok(OkResult::StaticStr(subject))
+                    }
+                    _ => Ok(OkResult::StaticStr("installation_repositories event ignored")),
+                }
+            }
             _ => Ok("not a pull request event".into()),
         }
     }
