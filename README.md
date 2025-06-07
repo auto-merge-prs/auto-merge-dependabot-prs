@@ -50,9 +50,9 @@ To read logs:
 
 ```sh
 aws logs describe-log-groups
-aws logs tail                                  /aws/lambda/auto-merge-dependabot-prs-AutoMergeDependabotPRsGi-YVZ8zJNokIL3
-aws logs describe-log-streams --log-group-name /aws/lambda/auto-merge-dependabot-prs-AutoMergeDependabotPRsGi-YVZ8zJNokIL3
-aws logs get-log-events       --log-group-name /aws/lambda/auto-merge-dependabot-prs-AutoMergeDependabotPRsGi-YVZ8zJNokIL3 --log-stream-name '2025/05/17/[$LATEST]54e6bb5924fd4680a2a832dc21b882ad'
+aws logs tail                                  /aws/lambda/auto-merge-dependabot-prs-AutoMergeDependabotPRsGi-AbCdEf123456
+aws logs describe-log-streams --log-group-name /aws/lambda/auto-merge-dependabot-prs-AutoMergeDependabotPRsGi-AbCdEf123456
+aws logs get-log-events       --log-group-name /aws/lambda/auto-merge-dependabot-prs-AutoMergeDependabotPRsGi-AbCdEf123456 --log-stream-name '2025/05/17/[$LATEST]54e6bb5924fd4680a2a832dc21b882ad'
 ```
 
 ### Other useful commands
@@ -63,7 +63,7 @@ sam local start-api
 curl -vvv --data-binary @tests/webhook-data/pull-request-opened-by-dependabot/payload.json -H "X-Hub-Signature-256: a" -H "Content-Type: application/json" -H "X-GitHub-Event: pull_request" http://127.0.0.1:3000/webhook
 
 # Test against AWS deployment
-curl -vvv --data-binary @tests/webhook-data/pull-request-opened-by-dependabot/payload.json -H "X-Hub-Signature-256: sha256=a" -H "Content-Type: application/json" -H "X-GitHub-Event: pull_request" https://szc7aqhos8.execute-api.eu-west-1.amazonaws.com/Prod/webhook
+curl -vvv --data-binary @tests/webhook-data/pull-request-opened-by-dependabot/payload.json -H "X-Hub-Signature-256: sha256=a" -H "Content-Type: application/json" -H "X-GitHub-Event: pull_request" https://abcde12345.execute-api.eu-west-1.amazonaws.com/Prod/webhook
 
 # Run tests
 cargo test --manifest-path=webhook/Cargo.toml
