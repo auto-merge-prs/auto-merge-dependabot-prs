@@ -1,7 +1,12 @@
 [package]
+edition = "2024"
 name = "auto-merge-dependabot-pull-requests-webhook"
 version = "0.1.0"
-edition = "2021"
+homepage = "https://github.com/auto-merge-prs/auto-merge-dependabot-prs"
+documentation = "https://github.com/auto-merge-prs/auto-merge-dependabot-prs"
+readme = "README.md"
+license = "MPL-2.0"
+repository = "https://github.com/auto-merge-prs/auto-merge-dependabot-prs"
 
 [dependencies]
 hex = "0.4.3"
