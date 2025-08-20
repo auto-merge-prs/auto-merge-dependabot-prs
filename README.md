@@ -59,7 +59,7 @@ aws logs get-log-events       --log-group-name /aws/lambda/auto-merge-dependabot
 
 ```sh
 # Test locally (doesn't work very well because of lack of AWS Secrets Manager)
-sam local start-api
+sam build --beta-features && sam local start-api
 curl -vvv --data-binary @tests/webhook-data/pull-request-opened-by-dependabot/payload.json -H "X-Hub-Signature-256: a" -H "Content-Type: application/json" -H "X-GitHub-Event: pull_request" http://127.0.0.1:3000/webhook
 
 # Test against AWS deployment

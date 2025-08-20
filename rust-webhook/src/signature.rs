@@ -1,4 +1,9 @@
-use openssl::{hash::MessageDigest, memcmp, pkey::PKey, sign::Signer};
+//! Copyright (c) 2025 Martin Nordholts
+//!
+//! This Source Code Form is subject to the terms of the Mozilla Public
+//! License, v. 2.0. If a copy of the MPL was not distributed with this
+//! file, You can obtain one at https://mozilla.org/MPL/2.0/.
+
 
 #[derive(Eq, PartialEq, Debug)]
 pub enum VerificationResult {
@@ -6,19 +11,21 @@ pub enum VerificationResult {
     Failure,
 }
 
+use openssl::{hash::MessageDigest, memcmp, pkey::PKey, sign::Signer};
+
 /// See <https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries>
 pub fn verify_sha256(signature_header_value: &str, secret: &str, payload: &[u8]) -> VerificationResult {
     let prefix = "sha256=";
     if !signature_header_value.starts_with(prefix) {
         return VerificationResult::Failure;
     }
-    let actual_signature = calculate(secret, payload);
-    let expected_signature = match hex::decode(&signature_header_value[prefix.len()..]) {
+    let expected_signature = calculate(secret, payload);
+    let actual_signature = match hex::decode(&signature_header_value[prefix.len()..]) {
         Ok(sig) => sig,
         Err(_) => return VerificationResult::Failure,
     };
 
-    if memcmp::eq(&actual_signature, &expected_signature) {
+    if memcmp::eq(&expected_signature, &actual_signature) {
         VerificationResult::Success
     } else {
         VerificationResult::Failure

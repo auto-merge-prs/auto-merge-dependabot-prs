@@ -1,4 +1,10 @@
-# For documentation aobut AWS SAM, see e.g.
+# Copyright (c) Martin Nordholts
+#
+# This Source Code Form is subject to the terms of the Mozilla Public
+# License, v. 2.0. If a copy of the MPL was not distributed with this
+# file, You can obtain one at https://mozilla.org/MPL/2.0/.
+#
+# For documentation about AWS SAM, see e.g.
 #
 #   https://github.com/aws/serverless-application-model/tree/master/docs/
 #
@@ -32,8 +38,8 @@ Resources:
       Environment:
         Variables:
           AUTO_MERGE_DEPENDABOT_PRS_DEPENDABOT_USER_NAME_AND_ID: dependabot[bot],49699333
-          AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_WEBHOOK_SECRET: webhook-secret
-          AUTO_MERGE_DEPENDABOT_PRS_SECRET_ID_PRIVATE_KEY: private-key
+          AUTO_MERGE_DEPENDABOT_PRS_WEBHOOK_SECRET_ID: webhook-secret
+          AUTO_MERGE_DEPENDABOT_PRS_PRIVATE_KEY_SECRET_ID: private-key
       Runtime: provided.al2023
       CodeUri: ./rust-webhook
       Handler: bootstrap
