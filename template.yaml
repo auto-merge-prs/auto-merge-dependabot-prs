@@ -21,9 +21,12 @@ Transform: AWS::Serverless-2016-10-31
 Description: Code for https://github.com/apps/auto-merge-dependabot-prs
 
 Parameters:
-  AUTO_MERGE_DEPENDABOT_PRS_GITHUB_APP_ID:
+  GitHubAppID:
     Type: Number
     Description: GitHub App ID for this deployment, e.g. "1234567"
+  DeployedCommit:
+    Type: String
+    Description: For tracability. What git commit we deploy from.
 
 Resources:
   AutoMergeDependabotPRsGitHubAppWebhook:
@@ -45,7 +48,8 @@ Resources:
           AUTO_MERGE_DEPENDABOT_PRS_DEPENDABOT_USER_NAME_AND_ID: dependabot[bot],49699333
           AUTO_MERGE_DEPENDABOT_PRS_WEBHOOK_SECRET_ID: webhook-secret
           AUTO_MERGE_DEPENDABOT_PRS_PRIVATE_KEY_SECRET_ID: private-key
-          AUTO_MERGE_DEPENDABOT_PRS_GITHUB_APP_ID: !Ref AUTO_MERGE_DEPENDABOT_PRS_GITHUB_APP_ID
+          AUTO_MERGE_DEPENDABOT_PRS_GITHUB_APP_ID: !Ref GitHubAppID
+          AUTO_MERGE_DEPENDABOT_PRS_DEPLOYED_COMMIT: !Ref DeployedCommit
       Runtime: provided.al2023
       CodeUri: ./rust-webhook
       Handler: bootstrap
