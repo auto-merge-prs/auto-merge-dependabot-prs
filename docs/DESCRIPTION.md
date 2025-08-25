@@ -2,6 +2,13 @@ This GitHub App enables auto-merge on PRs that dependabot opens so that they are
 
 ## Installation
 
+First:
+
+* Ensure **Require status checks to pass** in [Branch protection rules](https://github.com/owner/repo/settings/branches) is enforced for your CI.
+* Ensure **Allow auto-merge** is enabled in your [General repo settings](https://github.com/owner/repo/settings).
+
+Then:
+
 1. Click the **Configure** button to the right.
 2. Select the repository for which you want to auto-merge dependabot PRs.
 3. Click the **Install** button.
