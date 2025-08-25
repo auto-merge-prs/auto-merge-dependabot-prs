@@ -6,7 +6,7 @@ See that page for an explanation of why a GitHub App is better than using a Pers
 
 ## Installing this GitHub App in your repo
 
-Again, see https://github.com/apps/auto-merge-dependabot-prs (or the [source](./docs/DESCRIPTION.md))for instructions.
+Again, see https://github.com/apps/auto-merge-dependabot-prs (or the [source](./docs/DESCRIPTION.md)) for instructions.
 
 ## Deploying
 
@@ -31,15 +31,14 @@ openssl rand 32 | base64 --wrap=0 | aws secretsmanager create-secret --name webh
 ### Register new GitHub App
 
 1. Go to https://github.com/settings/apps and click _New GitHub App_. Fill in like this:
-
-*GitHub App name*: whatever
-*Homepage URL*: whatever
-*Webhook Active*: Yes
-*Webhook URL*: Your Lambda URL (https://abcd1234.execute-api.eu-west-1.amazonaws.com/Prod/webhook)
-*Secret*: Output of `aws secretsmanager get-secret-value --secret-id webhook-secret | jq --raw-output .SecretString`
-*Repository permissions*: Contents: Read and write, Pull Requests: Read and write
-*Subscribe to events*: Pull request
-*Where can this GitHub App be installed?* Any account
+    * *GitHub App name*: whatever
+    * *Homepage URL*: whatever
+    * *Webhook Active*: Yes
+    * *Webhook URL*: Your API Gateway Prod stage invocation URL (https://abcd1234.execute-api.eu-west-1.amazonaws.com/Prod/webhook)
+    * *Secret*: Output of `aws secretsmanager get-secret-value --secret-id webhook-secret | jq --raw-output .SecretString`
+    * *Repository permissions*: Contents: Read and write, Pull Requests: Read and write
+    * *Subscribe to events*: Pull request
+    * *Where can this GitHub App be installed?* Any account
 
 2. Click "Crate GitHub App". You'l see "Registration successfull"
 3. Click "Generate a private key" and download the *.private-key.pem file
