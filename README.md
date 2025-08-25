@@ -23,7 +23,7 @@ source ~/opt/venv/bin/activate
 pip3 install cargo-lambda
 
 # Deploy to AWS
-sam build --beta-features && sam deploy
+sam build --beta-features && sam deploy --parameter-overrides AUTO_MERGE_DEPENDABOT_PRS_GITHUB_APP_ID=1293437
 openssl rand 32 | base64 --wrap=0 | aws secretsmanager create-secret --name webhook-secret --secret-string file:///dev/stdin
 ```
 
@@ -63,7 +63,7 @@ sam build --beta-features && sam local start-api
 curl -vvv --data-binary @tests/webhook-data/pull-request-opened-by-dependabot/payload.json -H "X-Hub-Signature-256: a" -H "Content-Type: application/json" -H "X-GitHub-Event: pull_request" http://127.0.0.1:3000/webhook
 
 # Test against AWS deployment
-curl -vvv --data-binary @tests/webhook-data/pull-request-opened-by-dependabot/payload.json -H "X-Hub-Signature-256: sha256=a" -H "Content-Type: application/json" -H "X-GitHub-Event: pull_request" https://szc7aqhos8.execute-api.eu-west-1.amazonaws.com/Prod/webhook
+curl -vvv --data-binary @tests/webhook-data/pull-request-opened-by-dependabot/payload.json -H "X-Hub-Signature-256: sha256=a" -H "Content-Type: application/json" -H "X-GitHub-Event: pull_request" https://abcde12345.execute-api.eu-west-1.amazonaws.com/Prod/webhook
 
 # Run tests
 cargo test --manifest-path=webhook/Cargo.toml
