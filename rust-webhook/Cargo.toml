@@ -29,4 +29,6 @@ version = "0.13.0"
 
 [dependencies.openssl]
 version = "0.10.72"
-features = ["vendored"] # See https://github.com/sfackler/rust-openssl/issues/2217
+# features = ["vendored"] # See https://github.com/sfackler/rust-openssl/issues/2217
+# sudo ln -s /usr/include/x86_64-linux-gnu/openssl/opensslconf.h /usr/include/openssl/opensslconf.h
+# sudo ln -s /usr/include/x86_64-linux-gnu/openssl/configuration.h /usr/include/openssl/configuration.h
