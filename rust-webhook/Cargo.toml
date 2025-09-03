@@ -13,7 +13,7 @@ hex = "0.4.3"
 graphql_client = "0.14.0" # curl -L https://docs.github.com/public/fpt/schema.docs.graphql -o github_schema.graphql
 jsonwebtoken = "9.3.1"
 lambda_runtime = "0.13.0"
-serde_json = "1.0.140"
+serde_json = "1.0.143"
 tokio = { version = "1", features = ["macros"] }
 serde = "1.0.219"
 
