@@ -18,15 +18,15 @@ jobs:
     if: always() # Otherwise this job is skipped if the matrix job fails
     runs-on: ubuntu-latest
     needs:
-      - build
+      - lint-and-build
     steps:
       - run: jq --exit-status 'all(.result == "success")' <<< '${{ toJson(needs) }}'
 
-  build:
-    name: build
+  lint-and-build:
+    name: lint-and-build
     runs-on: ubuntu-latest
     permissions:
       contents: read # For actions/checkout@v4
     steps:
       - uses: actions/checkout@v4
-      - run: ( cd rust-webhook && cargo build )
+      - run: ( cd rust-webhook && cargo fmt --check && cargo clippy && cargo build )

@@ -4,7 +4,6 @@
 //! License, v. 2.0. If a copy of the MPL was not distributed with this
 //! file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
-
 #[derive(Eq, PartialEq, Debug)]
 pub enum VerificationResult {
     Success,
@@ -14,7 +13,11 @@ pub enum VerificationResult {
 use openssl::{hash::MessageDigest, memcmp, pkey::PKey, sign::Signer};
 
 /// See <https://docs.github.com/en/webhooks/using-webhooks/validating-webhook-deliveries>
-pub fn verify_sha256(signature_header_value: &str, secret: &str, payload: &[u8]) -> VerificationResult {
+pub fn verify_sha256(
+    signature_header_value: &str,
+    secret: &str,
+    payload: &[u8],
+) -> VerificationResult {
     let prefix = "sha256=";
     if !signature_header_value.starts_with(prefix) {
         return VerificationResult::Failure;
