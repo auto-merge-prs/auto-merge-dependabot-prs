@@ -170,10 +170,9 @@ async fn enable_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> Res
     if response_pr_id == pr_id {
         Ok(())
     } else {
-        info!("PR id mismatch. Errors=`{:?}`", response.errors);
         Err(Error::ServerError(Outcome::GraphQlError(format!(
-            "PR id mismatch: `{}` != `{}`. See server logs for errors.",
-            response_pr_id, pr_id
+            "PR id mismatch: `{}` != `{}`. Errors=`{:?}`",
+            response_pr_id, pr_id, response.errors
         ))))
     }
 }
@@ -208,14 +207,13 @@ async fn announce_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> O
     } else {
         // Examples of what the errors can look like:
         //
-        //     PR id mismatch. Errors=`Some([Error { message: "Pull request Pull request is in clean status", locations: Some([Location { line: 2, column: 5 }]), path: Some([Key("enablePullRequestAutoMerge")]), extensions: None }])`
+        //     Errors=`Some([Error { message: "Pull request Pull request is in clean status", locations: Some([Location { line: 2, column: 5 }]), path: Some([Key("enablePullRequestAutoMerge")]), extensions: None }])`
         //
-        //     PR id mismatch. Errors=`Some([Error { message: "Pull request Auto merge is not allowed for this repository", locations: Some([Location { line: 2, column: 5 }]), path: Some([Key("enablePullRequestAutoMerge")]), extensions: None }])`
+        //     Errors=`Some([Error { message: "Pull request Auto merge is not allowed for this repository", locations: Some([Location { line: 2, column: 5 }]), path: Some([Key("enablePullRequestAutoMerge")]), extensions: None }])`
         //
-        info!("PR id mismatch. Errors=`{:?}`", response.errors);
         Err(Error::ServerError(Outcome::GraphQlError(format!(
-            "PR id mismatch: `{}` != `{}`. See server logs for errors.",
-            response_pr_id, pr_id
+            "PR id mismatch: `{}` != `{}`. Errors=`{:?}`",
+            response_pr_id, pr_id, response.errors
         ))))
     }
 }
