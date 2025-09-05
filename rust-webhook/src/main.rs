@@ -5,8 +5,8 @@
 //! file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use graphql_client::GraphQLQuery;
+use lambda_http::lambda_runtime::Diagnostic;
 use lambda_http::{IntoResponse, Request, service_fn, tracing};
-use lambda_runtime::Diagnostic;
 use octocrab::{
     Octocrab,
     models::{
