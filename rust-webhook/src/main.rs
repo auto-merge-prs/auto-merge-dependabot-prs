@@ -6,7 +6,7 @@
 
 use graphql_client::GraphQLQuery;
 use lambda_http::{IntoResponse, Request, service_fn, tracing};
-use lambda_runtime::Diagnostic;
+use lambda_http::lambda_runtime::Diagnostic;
 use octocrab::{
     Octocrab,
     models::{
