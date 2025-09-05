@@ -5,10 +5,7 @@
 //! file, You can obtain one at https://mozilla.org/MPL/2.0/.
 
 use graphql_client::GraphQLQuery;
-use lambda_http::{
-    IntoResponse, Request, service_fn,
-    tracing::{self, info},
-};
+use lambda_http::{IntoResponse, Request, service_fn, tracing};
 use lambda_runtime::Diagnostic;
 use octocrab::{
     Octocrab,
@@ -109,7 +106,7 @@ async fn handle_possible_webhook_event(request: Request) -> Result<Outcome, Erro
     // Ensure it was dependabot who opened the PR.
     let sender_login: Option<String> = webhook_event.sender.clone().map(|s| s.login);
     let sender_id: Option<UserId> = webhook_event.sender.clone().map(|s| s.id);
-    if !is_dependabot(sender_login.clone(), sender_id.clone())? {
+    if !is_dependabot(sender_login.clone(), sender_id)? {
         return Ok(Outcome::NotOpenedByDependabotBut {
             name: sender_login,
             id: sender_id,
@@ -170,10 +167,9 @@ async fn enable_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> Res
     if response_pr_id == pr_id {
         Ok(())
     } else {
-        info!("PR id mismatch. Errors=`{:?}`", response.errors);
         Err(Error::ServerError(Outcome::GraphQlError(format!(
-            "PR id mismatch: `{}` != `{}`. See server logs for errors.",
-            response_pr_id, pr_id
+            "PR id mismatch: `{}` != `{}`. Errors=`{:?}`",
+            response_pr_id, pr_id, response.errors
         ))))
     }
 }
@@ -188,9 +184,7 @@ async fn announce_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> O
 
     let variables = add_comment::Variables {
         id: pr_id.to_string(),
-        body: format!(
-            "If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀"
-        ),
+        body: "If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀".to_string(),
     };
 
     let response: graphql_client::Response<add_comment::ResponseData> = octocrab
@@ -208,14 +202,13 @@ async fn announce_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> O
     } else {
         // Examples of what the errors can look like:
         //
-        //     PR id mismatch. Errors=`Some([Error { message: "Pull request Pull request is in clean status", locations: Some([Location { line: 2, column: 5 }]), path: Some([Key("enablePullRequestAutoMerge")]), extensions: None }])`
+        //     Errors=`Some([Error { message: "Pull request Pull request is in clean status", locations: Some([Location { line: 2, column: 5 }]), path: Some([Key("enablePullRequestAutoMerge")]), extensions: None }])`
         //
-        //     PR id mismatch. Errors=`Some([Error { message: "Pull request Auto merge is not allowed for this repository", locations: Some([Location { line: 2, column: 5 }]), path: Some([Key("enablePullRequestAutoMerge")]), extensions: None }])`
+        //     Errors=`Some([Error { message: "Pull request Auto merge is not allowed for this repository", locations: Some([Location { line: 2, column: 5 }]), path: Some([Key("enablePullRequestAutoMerge")]), extensions: None }])`
         //
-        info!("PR id mismatch. Errors=`{:?}`", response.errors);
         Err(Error::ServerError(Outcome::GraphQlError(format!(
-            "PR id mismatch: `{}` != `{}`. See server logs for errors.",
-            response_pr_id, pr_id
+            "PR id mismatch: `{}` != `{}`. Errors=`{:?}`",
+            response_pr_id, pr_id, response.errors
         ))))
     }
 }
@@ -231,11 +224,11 @@ fn is_dependabot(sender_login: Option<String>, sender_id: Option<UserId>) -> Res
 }
 
 async fn event_sender(request: &Request) -> Result<Sender, Error> {
-    let signature = extract_header(&request, "X-Hub-Signature-256")?;
+    let signature = extract_header(request, "X-Hub-Signature-256")?;
     let webhook_secret = get_secret("AUTO_MERGE_DEPENDABOT_PRS_WEBHOOK_SECRET_ID").await?;
     let body = request.body();
     Ok(
-        match signature::verify_sha256(&signature, &webhook_secret, body) {
+        match signature::verify_sha256(signature, &webhook_secret, body) {
             signature::VerificationResult::Success => Sender::GitHub,
             signature::VerificationResult::Failure => Sender::Unknown,
         },
