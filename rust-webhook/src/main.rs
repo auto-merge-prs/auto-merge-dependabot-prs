@@ -64,8 +64,6 @@ enum Error {
     ServerError(Outcome),
 }
 
-type OutcomeResult = Result<Outcome, Error>;
-
 #[tokio::main]
 async fn main() -> Result<(), lambda_http::Error> {
     tracing::init_default_subscriber();
@@ -123,7 +121,8 @@ async fn handle_possible_webhook_event(request: Request) -> Result<Outcome, Erro
     // Enable auto-merge because this PR is opened by dependabot.
     let octocrab = octocrab_for_installation(webhook_event.installation.map(|i| i.id())).await?;
     enable_pull_request_auto_merge(&octocrab, &pr_id).await?;
-    announce_pull_request_auto_merge(&octocrab, &pr_id).await
+    announce_pull_request_auto_merge(&octocrab, &pr_id).await?;
+    Ok(Outcome::EnabledAutoMerge)
 }
 
 async fn octocrab_for_installation(id: Option<InstallationId>) -> Result<Octocrab, Error> {
@@ -167,14 +166,28 @@ async fn enable_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> Res
     if response_pr_id == pr_id {
         Ok(())
     } else {
+        add_comment(
+            octocrab,
+            pr_id,
+            format!(
+                "Got GitHub GraphQL errors while trying to enable auto-merge:\n\n```\n{:#?}\n```",
+                response.errors
+            ),
+        )
+        .await?;
         Err(Error::ServerError(Outcome::GraphQlError(format!(
-            "PR id mismatch: `{}` != `{}`. Errors=`{:?}`",
+            "Enable auto-merge PR id mismatch: `{}` != `{}`. Errors=`{:?}`",
             response_pr_id, pr_id, response.errors
         ))))
     }
 }
 
-async fn announce_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> OutcomeResult {
+async fn announce_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> Result<(), Error> {
+    add_comment(octocrab, pr_id, "If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀".to_string()).await?;
+    Ok(())
+}
+
+async fn add_comment(octocrab: &Octocrab, pr_id: &str, body: String) -> Result<(), Error> {
     #[derive(graphql_client::GraphQLQuery)]
     #[graphql(
         schema_path = "src/graphql/github_schema.graphql",
@@ -184,7 +197,7 @@ async fn announce_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> O
 
     let variables = add_comment::Variables {
         id: pr_id.to_string(),
-        body: "If CI passes, this dependabot PR will be [auto-merged](https://github.com/apps/auto-merge-dependabot-prs) 🚀".to_string(),
+        body,
     };
 
     let response: graphql_client::Response<add_comment::ResponseData> = octocrab
@@ -198,7 +211,7 @@ async fn announce_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> O
         .map(|x| x.id)
         .unwrap_or_default();
     if response_pr_id == pr_id {
-        Ok(Outcome::EnabledAutoMerge)
+        Ok(())
     } else {
         // Examples of what the errors can look like:
         //
@@ -207,7 +220,7 @@ async fn announce_pull_request_auto_merge(octocrab: &Octocrab, pr_id: &str) -> O
         //     Errors=`Some([Error { message: "Pull request Auto merge is not allowed for this repository", locations: Some([Location { line: 2, column: 5 }]), path: Some([Key("enablePullRequestAutoMerge")]), extensions: None }])`
         //
         Err(Error::ServerError(Outcome::GraphQlError(format!(
-            "PR id mismatch: `{}` != `{}`. Errors=`{:?}`",
+            "Add PR comment id mismatch: `{}` != `{}`. Errors=`{:?}`",
             response_pr_id, pr_id, response.errors
         ))))
     }
