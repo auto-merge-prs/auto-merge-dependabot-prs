@@ -27,5 +27,5 @@ features = ["json"]
 version = "0.17.0"
 
 [dependencies.openssl]
-version = "0.10.73"
+version = "0.10.74"
 features = ["vendored"] # See https://github.com/sfackler/rust-openssl/issues/2217
