@@ -10,7 +10,7 @@ repository = "https://github.com/auto-merge-prs/auto-merge-dependabot-prs"
 
 [dependencies]
 hex = "0.4.3"
-graphql_client = "0.14.0" # curl -L https://docs.github.com/public/fpt/schema.docs.graphql -o github_schema.graphql
+graphql_client = "0.15.0" # curl -L https://docs.github.com/public/fpt/schema.docs.graphql -o github_schema.graphql
 jsonwebtoken = "9.3.1"
 serde_json = "1.0.140"
 tokio = { version = "1", features = ["macros"] }
